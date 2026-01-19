@@ -101,6 +101,7 @@ skilltrack
         └───com
             └───skilltrack
                 └───backend
+```
 
 ### Authentication Flow
 
@@ -180,5 +181,6 @@ This is currently a **personal learning & portfolio project**.
 Contributions may be opened in future phases.
 
 ⭐ If you find this project useful, feel free to star the repository!
+
 
 
