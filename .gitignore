@@ -1,0 +1,24 @@
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Backend (Spring Boot / Maven) =====
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.log
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+
+# ===== Env / Secrets =====
+.env
+*.env
+application-local.yml
+application-local.properties
+
+# ===== Frontend (future) =====
+frontend/node_modules/
+frontend/dist/
+frontend/.env
