@@ -46,7 +46,61 @@ Many students:
 
 ###  Project Structure
 
-![Project Structure](docs/project-structure.png)
+```text
+skilltrack
+├───.mvn
+│   └───wrapper
+├───src
+│   ├───main
+│   │   ├───java
+│   │   │   └───com
+│   │   │       └───skilltrack
+│   │   │           └───backend
+│   │   │               ├───config
+│   │   │               ├───controller
+│   │   │               ├───dto
+│   │   │               ├───entity
+│   │   │               ├───exception
+│   │   │               ├───repository
+│   │   │               ├───security
+│   │   │               ├───service
+│   │   │               └───util
+│   │   └───resources
+│   │       ├───static
+│   │       └───templates
+│   └───test
+│       └───java
+│           └───com
+│               └───skilltrack
+│                   └───backend
+└───target
+    ├───classes
+    │   └───com
+    │       └───skilltrack
+    │           └───backend
+    │               ├───config
+    │               ├───controller
+    │               ├───dto
+    │               ├───entity
+    │               ├───exception
+    │               ├───repository
+    │               ├───security
+    │               ├───service
+    │               └───util
+    ├───generated-sources
+    │   └───annotations
+    ├───generated-test-sources
+    │   └───test-annotations
+    ├───maven-status
+    │   └───maven-compiler-plugin
+    │       ├───compile
+    │       │   └───default-compile
+    │       └───testCompile
+    │           └───default-testCompile
+    └───test-classes
+        └───com
+            └───skilltrack
+                └───backend
 
 ### Authentication Flow
 
@@ -57,9 +111,15 @@ Many students:
 
 ### API Documentation
 
-Swagger UI is available when the backend is running:
+Swagger UI is available when the backend is running locally.
 
-http://localhost:8081/swagger-ui/index.html
+**Steps to access Swagger UI:**
+1. Navigate to the backend directory
+2. Run the application
+   ```bash
+   ./mvnw spring-boot:run
+3. Open in browser :
+-  http://localhost:8081/swagger-ui/index.html
 
 ### Roadmap & Future Features
 
@@ -77,8 +137,6 @@ http://localhost:8081/swagger-ui/index.html
 -  React frontend
 -  Charts & progress visualization
 -  Resume-ready skill export
-
----
 
 ### Development Approach
 
@@ -122,4 +180,5 @@ This is currently a **personal learning & portfolio project**.
 Contributions may be opened in future phases.
 
 ⭐ If you find this project useful, feel free to star the repository!
+
 
