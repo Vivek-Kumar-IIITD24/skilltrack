@@ -46,61 +46,7 @@ Many students:
 
 ###  Project Structure
 
-skilltrack
-├───.mvn
-│   └───wrapper
-├───src
-│   ├───main
-│   │   ├───java
-│   │   │   └───com
-│   │   │       └───skilltrack
-│   │   │           └───backend
-│   │   │               ├───config
-│   │   │               ├───controller
-│   │   │               ├───dto
-│   │   │               ├───entity
-│   │   │               ├───exception
-│   │   │               ├───repository
-│   │   │               ├───security
-│   │   │               ├───service
-│   │   │               └───util
-│   │   └───resources
-│   │       ├───static
-│   │       └───templates
-│   └───test
-│       └───java
-│           └───com
-│               └───skilltrack
-│                   └───backend
-└───target
-    ├───classes
-    │   └───com
-    │       └───skilltrack
-    │           └───backend
-    │               ├───config
-    │               ├───controller
-    │               ├───dto
-    │               ├───entity
-    │               ├───exception
-    │               ├───repository
-    │               ├───security
-    │               ├───service
-    │               └───util
-    ├───generated-sources
-    │   └───annotations
-    ├───generated-test-sources
-    │   └───test-annotations
-    ├───maven-status
-    │   └───maven-compiler-plugin
-    │       ├───compile
-    │       │   └───default-compile
-    │       └───testCompile
-    │           └───default-testCompile
-    ├───surefire-reports
-    └───test-classes
-        └───com
-            └───skilltrack
-                └───backend
+![Project Structure](docs/project-structure.png)
 
 ### Authentication Flow
 
@@ -176,3 +122,4 @@ This is currently a **personal learning & portfolio project**.
 Contributions may be opened in future phases.
 
 ⭐ If you find this project useful, feel free to star the repository!
+
