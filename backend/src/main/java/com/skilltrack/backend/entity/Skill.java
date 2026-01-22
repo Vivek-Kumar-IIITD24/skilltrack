@@ -18,61 +18,42 @@ public class Skill {
     @Column(length = 255)
     private String description;
 
-    // ✅ NEW: Skill Level (Beginner, Intermediate, Advanced)
-    // Defaulting to 'Beginner' to handle existing data safely
     @Column(nullable = false)
     private String level = "Beginner";
 
-    // ✅ Cascade relationship to allow deletion even if students are enrolled
+    // ✅ NEW: Skill Category (e.g., Frontend, Backend, Data Science)
+    @Column(nullable = false)
+    private String category = "General";
+
     @OneToMany(mappedBy = "skill", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore 
     private List<UserSkill> userSkills;
 
-    // 🔹 Constructors
     public Skill() {}
 
-    // Updated constructor to include level
-    public Skill(String name, String description, String level) {
+    // Updated constructor to include level and category
+    public Skill(String name, String description, String level, String category) {
         this.name = name;
         this.description = description;
         this.level = level;
+        this.category = category;
     }
 
-    // 🔹 Getters & Setters
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
 
-    public String getName() {
-        return name;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public String getDescription() {
-        return description;
-    }
+    public String getLevel() { return level; }
+    public void setLevel(String level) { this.level = level; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    // ✅ NEW: Getter and Setter for Category
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
-    // ✅ NEW: Getter and Setter for level
-    public String getLevel() {
-        return level;
-    }
-
-    public void setLevel(String level) {
-        this.level = level;
-    }
-
-    public List<UserSkill> getUserSkills() {
-        return userSkills;
-    }
-
-    public void setUserSkills(List<UserSkill> userSkills) {
-        this.userSkills = userSkills;
-    }
+    public List<UserSkill> getUserSkills() { return userSkills; }
+    public void setUserSkills(List<UserSkill> userSkills) { this.userSkills = userSkills; }
 }
