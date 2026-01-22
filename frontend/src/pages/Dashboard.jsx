@@ -25,17 +25,15 @@ function Dashboard() {
 
   const handleProgressChange = async (skillId, newProgress) => {
     try {
-      // ✅ Calls the new /update endpoint we created in the backend
       await api.put("/user-skills/update", {
         userId: userId,
         skillId: skillId,
         progress: parseInt(newProgress),
       });
       
-      // Update local state to show change immediately
       setEnrolledSkills((prev) =>
         prev.map((s) =>
-          s.skillId === skillId ? { ...s, progress: newProgress } : s
+          s.skillId === skillId ? { ...s, progress: parseInt(newProgress) } : s
         )
       );
     } catch (err) {
@@ -54,11 +52,24 @@ function Dashboard() {
         
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">My Learning Path</h1>
-          <div className="space-x-4">
-            <button onClick={() => navigate("/library")} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700">
+          <div className="flex gap-3">
+            {/* ✅ Added Profile Navigation */}
+            <button 
+              onClick={() => navigate("/profile")} 
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-700 transition shadow-md"
+            >
+              My Profile
+            </button>
+            <button 
+              onClick={() => navigate("/library")} 
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition shadow-md"
+            >
               Browse Library
             </button>
-            <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600">
+            <button 
+              onClick={handleLogout} 
+              className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition shadow-md"
+            >
               Logout
             </button>
           </div>
@@ -69,40 +80,58 @@ function Dashboard() {
         ) : enrolledSkills.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {enrolledSkills.map((skill) => (
-              <div key={skill.skillId} className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
-                <div className="flex justify-between items-start mb-4">
-                  <h2 className="text-xl font-bold text-gray-800">{skill.skillName}</h2>
-                  <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${
-                    skill.progress >= 100 ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                  }`}>
-                    {skill.progress >= 100 ? "Completed" : "In Progress"}
-                  </span>
-                </div>
-
-                <p className="text-gray-600 text-sm mb-6 line-clamp-2">{skill.description}</p>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm font-medium text-gray-700">
-                    <span>Progress</span>
-                    <span>{skill.progress}%</span>
+              <div key={skill.skillId} className="bg-white p-6 rounded-xl shadow-md border border-gray-100 flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-xl font-bold text-gray-800">{skill.skillName}</h2>
+                    <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${
+                      skill.progress >= 100 ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                    }`}>
+                      {skill.progress >= 100 ? "Completed" : "In Progress"}
+                    </span>
                   </div>
-                  
-                  {/* 🎚️ Progress Slider */}
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={skill.progress}
-                    onChange={(e) => handleProgressChange(skill.skillId, e.target.value)}
-                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
-                  
-                  <div className="relative pt-1">
-                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
-                      <div style={{ width: `${skill.progress}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500"></div>
+
+                  <p className="text-gray-600 text-sm mb-6 line-clamp-2">{skill.description}</p>
+
+                  <div className="space-y-3 mb-6">
+                    <div className="flex justify-between text-sm font-medium text-gray-700">
+                      <span>Progress</span>
+                      <span>{skill.progress}%</span>
+                    </div>
+                    
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={skill.progress}
+                      onChange={(e) => handleProgressChange(skill.skillId, e.target.value)}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                    />
+                    
+                    <div className="relative pt-1">
+                      <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-200">
+                        <div 
+                          style={{ width: `${skill.progress}%` }} 
+                          className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500"
+                        ></div>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* ✅ Added Conditional Certificate Button */}
+                {skill.progress >= 100 ? (
+                  <button 
+                    onClick={() => navigate(`/certificate/${skill.skillId}`)}
+                    className="w-full mt-4 bg-gradient-to-r from-yellow-500 to-orange-600 text-white py-3 rounded-xl hover:from-yellow-600 hover:to-orange-700 transition-all font-black uppercase tracking-widest shadow-lg transform active:scale-95"
+                  >
+                    🎓 View Certificate
+                  </button>
+                ) : (
+                  <p className="text-center text-xs text-gray-400 italic mt-4">
+                    Complete 100% to unlock your certificate
+                  </p>
+                )}
               </div>
             ))}
           </div>
