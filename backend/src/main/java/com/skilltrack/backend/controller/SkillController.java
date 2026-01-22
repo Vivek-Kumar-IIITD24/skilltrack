@@ -18,29 +18,44 @@ public class SkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ CREATE SKILL (Unified: Safe and Secure)
+    // ✅ CREATE SKILL
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<?> addSkill(@RequestBody Skill skill) {
         
-        // 1. Safety check: Don't allow empty names
         if (skill.getName() == null || skill.getName().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Skill name cannot be empty");
         }
 
-        // 2. Check if the skill name is already taken
         if (skillRepository.existsByName(skill.getName())) {
              return ResponseEntity.badRequest().body("Skill already exists");
         }
 
-        // 3. Save and return the new skill
         Skill savedSkill = skillRepository.save(skill);
         return ResponseEntity.ok(savedSkill);
     }
 
-    // ✅ GET ALL SKILLS (Public/Authenticated)
+    // ✅ GET ALL SKILLS
     @GetMapping
     public List<Skill> getAllSkills() {
         return skillRepository.findAll();
+    }
+
+    // ✅ UPDATED: Delete Skill with Error Handling
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteSkill(@PathVariable Long id) {
+        try {
+            if (!skillRepository.existsById(id)) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            skillRepository.deleteById(id);
+            return ResponseEntity.ok("Skill deleted successfully");
+            
+        } catch (Exception e) {
+            // This catches the error if students are already enrolled in the skill
+            return ResponseEntity.status(500).body("Cannot delete skill: Students are currently enrolled in it.");
+        }
     }
 }
