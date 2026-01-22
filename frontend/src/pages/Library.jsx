@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ Import Hook
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 function Library() {
   const [skills, setSkills] = useState([]);
+  const [searchQuery, setSearchQuery] = useState(""); // 🔍 New: Search query state
   const [message, setMessage] = useState("");
-  const navigate = useNavigate(); // ✅ Initialize Hook
+  const navigate = useNavigate();
 
   // 1. Fetch all available skills on load
   useEffect(() => {
@@ -16,25 +17,31 @@ function Library() {
 
   // 2. Handle "Enroll" click
   const enrollSkill = async (skillId) => {
-    const userId = localStorage.getItem("userId"); // Get saved ID
+    const userId = localStorage.getItem("userId");
     
     try {
       await api.post("/user-skills/assign", {
         userId: userId,
         skillId: skillId,
-        progress: 0 // Start at 0%
+        progress: 0
       });
-      setMessage("Enrolled successfully! Check your Dashboard.");
+      setMessage("✅ Enrolled successfully! Check your Dashboard.");
     } catch (error) {
-      setMessage("Could not enroll. You might already have this skill.");
+      setMessage("❌ Could not enroll. You might already have this skill.");
     }
   };
+
+  // ✅ 3. Search Logic: Filter skills based on user input
+  const filteredSkills = skills.filter((skill) =>
+    skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    skill.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-4xl mx-auto">
         
-        {/* ✅ Header with Back Button */}
+        {/* Header with Back Button */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Skill Library</h1>
           <button
@@ -43,6 +50,17 @@ function Library() {
           >
             ← Back to Dashboard
           </button>
+        </div>
+
+        {/* 🔍 Search Input Field */}
+        <div className="mb-8">
+          <input
+            type="text"
+            placeholder="Search for skills (e.g. Java, Python, Frontend)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full p-4 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-700"
+          />
         </div>
         
         {/* Status Message */}
@@ -54,18 +72,26 @@ function Library() {
 
         {/* Skill Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {skills.map((skill) => (
-            <div key={skill.id} className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
-              <h3 className="text-xl font-bold text-gray-800 mb-2">{skill.name}</h3>
-              <p className="text-gray-600 mb-4 h-12 overflow-hidden">{skill.description}</p>
-              <button 
-                onClick={() => enrollSkill(skill.id)}
-                className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
-              >
-                Enroll Now
-              </button>
+          {filteredSkills.length > 0 ? (
+            filteredSkills.map((skill) => (
+              <div key={skill.id} className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">{skill.name}</h3>
+                  <p className="text-gray-600 mb-4 h-12 overflow-hidden">{skill.description}</p>
+                </div>
+                <button 
+                  onClick={() => enrollSkill(skill.id)}
+                  className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition font-semibold"
+                >
+                  Enroll Now
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-10">
+              <p className="text-gray-500 text-lg">No skills found matching "{searchQuery}"</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
