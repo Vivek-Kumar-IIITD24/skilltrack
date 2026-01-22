@@ -1,17 +1,8 @@
 package com.skilltrack.backend.entity;
 
 import java.util.List;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 
 @Entity
 @Table(name = "skills")
@@ -27,18 +18,24 @@ public class Skill {
     @Column(length = 255)
     private String description;
 
-    // ✅ ADDED: Cascade relationship to allow deletion even if students are enrolled
-    // orphanRemoval = true ensures that the link records are cleaned up in the DB
+    // ✅ NEW: Skill Level (Beginner, Intermediate, Advanced)
+    // Defaulting to 'Beginner' to handle existing data safely
+    @Column(nullable = false)
+    private String level = "Beginner";
+
+    // ✅ Cascade relationship to allow deletion even if students are enrolled
     @OneToMany(mappedBy = "skill", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore // Prevents infinite loops when converting to JSON
+    @JsonIgnore 
     private List<UserSkill> userSkills;
 
     // 🔹 Constructors
     public Skill() {}
 
-    public Skill(String name, String description) {
+    // Updated constructor to include level
+    public Skill(String name, String description, String level) {
         this.name = name;
         this.description = description;
+        this.level = level;
     }
 
     // 🔹 Getters & Setters
@@ -60,6 +57,15 @@ public class Skill {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    // ✅ NEW: Getter and Setter for level
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
     }
 
     public List<UserSkill> getUserSkills() {
