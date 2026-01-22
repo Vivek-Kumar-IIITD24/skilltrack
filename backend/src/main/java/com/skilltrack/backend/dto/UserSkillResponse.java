@@ -1,14 +1,16 @@
 package com.skilltrack.backend.dto;
 
 public class UserSkillResponse {
-    private Long skillId;       // The ID of the skill (e.g., 3 for Java)
-    private String skillName;   // "Java OPPS"
-    private String description; // "Learn Objects..."
-    private int progress;       // 45
-    private String status;      // "IN_PROGRESS"
+    private String studentName; // ✅ NEW: To show who is learning
+    private Long skillId;
+    private String skillName;
+    private String description;
+    private int progress;
+    private String status;
 
-    // Constructor
-    public UserSkillResponse(Long skillId, String skillName, String description, int progress, String status) {
+    // Updated Constructor
+    public UserSkillResponse(String studentName, Long skillId, String skillName, String description, int progress, String status) {
+        this.studentName = studentName;
         this.skillId = skillId;
         this.skillName = skillName;
         this.description = description;
@@ -17,6 +19,7 @@ public class UserSkillResponse {
     }
 
     // Getters
+    public String getStudentName() { return studentName; }
     public Long getSkillId() { return skillId; }
     public String getSkillName() { return skillName; }
     public String getDescription() { return description; }

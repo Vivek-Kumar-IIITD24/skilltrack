@@ -9,11 +9,11 @@ import com.skilltrack.backend.repository.UserRepository;
 import com.skilltrack.backend.repository.UserSkillRepository;
 import com.skilltrack.backend.repository.SkillRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -30,7 +30,7 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ Get enrolled skills for the logged-in student
+    // ✅ Student: Get my own skills
     @GetMapping("/me")
     public List<UserSkillResponse> getMySkills() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -40,6 +40,7 @@ public class UserSkillController {
         List<UserSkill> skills = userSkillRepository.findByUserId(user.getId());
 
         return skills.stream().map(us -> new UserSkillResponse(
+                user.getName(), // Pass student name
                 us.getSkill().getId(), 
                 us.getSkill().getName(), 
                 us.getSkill().getDescription(),
@@ -48,7 +49,20 @@ public class UserSkillController {
         )).collect(Collectors.toList());
     }
 
-    // ✅ Enroll in a new skill
+    // ✅ Admin: Get ALL student progress records
+    @GetMapping("/admin/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<UserSkillResponse> getAllProgress() {
+        return userSkillRepository.findAll().stream().map(us -> new UserSkillResponse(
+                us.getUser().getName(), // The student's name
+                us.getSkill().getId(), 
+                us.getSkill().getName(), 
+                us.getSkill().getDescription(),
+                us.getProgress(),
+                us.getStatus()
+        )).collect(Collectors.toList());
+    }
+
     @PostMapping("/assign")
     public String assignSkill(@RequestBody UserSkillRequest request) {
         User user = userRepository.findById(request.getUserId())
@@ -59,26 +73,21 @@ public class UserSkillController {
         UserSkill userSkill = new UserSkill();
         userSkill.setUser(user);
         userSkill.setSkill(skill);
-        userSkill.setProgress(0); // Always start at 0
+        userSkill.setProgress(0);
         userSkill.setStatus("IN_PROGRESS");
 
         userSkillRepository.save(userSkill);
         return "Skill assigned successfully";
     }
 
-    // ✅ NEW: Simplified Update Progress using Skill ID and User ID
-    // This allows the Frontend to just send { "userId": 1, "skillId": 5, "progress": 50 }
     @PutMapping("/update")
     public ResponseEntity<?> updateProgress(@RequestBody UserSkillRequest request) {
-        // 1. Find the specific record linking this user and skill
         return userSkillRepository.findByUserId(request.getUserId()).stream()
                 .filter(us -> us.getSkill().getId().equals(request.getSkillId()))
                 .findFirst()
                 .map(userSkill -> {
-                    // 2. Update progress
                     userSkill.setProgress(request.getProgress());
                     
-                    // 3. Logic: Update status based on percentage
                     if (request.getProgress() >= 100) {
                         userSkill.setStatus("COMPLETED");
                     } else if (request.getProgress() > 0) {
@@ -88,8 +97,8 @@ public class UserSkillController {
                     }
 
                     userSkillRepository.save(userSkill);
-                    return ResponseEntity.ok("Progress updated to " + request.getProgress() + "%");
+                    return ResponseEntity.ok("Progress updated");
                 })
-                .orElse(ResponseEntity.status(404).body("Skill record not found for this user"));
+                .orElse(ResponseEntity.status(404).body("Skill record not found"));
     }
 }
