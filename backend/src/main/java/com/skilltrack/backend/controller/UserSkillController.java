@@ -8,11 +8,12 @@ import com.skilltrack.backend.entity.Skill;
 import com.skilltrack.backend.repository.UserRepository;
 import com.skilltrack.backend.repository.UserSkillRepository;
 import com.skilltrack.backend.repository.SkillRepository;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.PutMapping;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,30 +30,25 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ THIS IS THE FIX: The endpoint React was looking for
+    // ✅ Get enrolled skills for the logged-in student
     @GetMapping("/me")
     public List<UserSkillResponse> getMySkills() {
-        // 1. Get the logged-in user's email from the Token
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        
-        // 2. Find the User
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // 3. Find their skills
         List<UserSkill> skills = userSkillRepository.findByUserId(user.getId());
 
-        // 4. Convert to JSON format
         return skills.stream().map(us -> new UserSkillResponse(
-                us.getSkill().getId(),       // Return the Skill ID
-                us.getSkill().getName(),     // Return Skill Name
+                us.getSkill().getId(), 
+                us.getSkill().getName(), 
                 us.getSkill().getDescription(),
                 us.getProgress(),
                 us.getStatus()
         )).collect(Collectors.toList());
     }
 
-    // (This is the existing endpoint you used in Postman)
+    // ✅ Enroll in a new skill
     @PostMapping("/assign")
     public String assignSkill(@RequestBody UserSkillRequest request) {
         User user = userRepository.findById(request.getUserId())
@@ -63,37 +59,37 @@ public class UserSkillController {
         UserSkill userSkill = new UserSkill();
         userSkill.setUser(user);
         userSkill.setSkill(skill);
-        userSkill.setProgress(request.getProgress());
+        userSkill.setProgress(0); // Always start at 0
         userSkill.setStatus("IN_PROGRESS");
 
         userSkillRepository.save(userSkill);
         return "Skill assigned successfully";
-
-
     }
 
-    // ✅ NEW: Update Progress Endpoint
+    // ✅ NEW: Simplified Update Progress using Skill ID and User ID
+    // This allows the Frontend to just send { "userId": 1, "skillId": 5, "progress": 50 }
     @PutMapping("/update")
-    public String updateProgress(@RequestBody UserSkillRequest request) {
-        // 1. Find the User
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        // 2. Find the specific skill they are learning
-        UserSkill userSkill = userSkillRepository.findByUserId(user.getId()).stream()
+    public ResponseEntity<?> updateProgress(@RequestBody UserSkillRequest request) {
+        // 1. Find the specific record linking this user and skill
+        return userSkillRepository.findByUserId(request.getUserId()).stream()
                 .filter(us -> us.getSkill().getId().equals(request.getSkillId()))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Skill not found for this user"));
+                .map(userSkill -> {
+                    // 2. Update progress
+                    userSkill.setProgress(request.getProgress());
+                    
+                    // 3. Logic: Update status based on percentage
+                    if (request.getProgress() >= 100) {
+                        userSkill.setStatus("COMPLETED");
+                    } else if (request.getProgress() > 0) {
+                        userSkill.setStatus("IN_PROGRESS");
+                    } else {
+                        userSkill.setStatus("ENROLLED");
+                    }
 
-        // 3. Update the progress
-        userSkill.setProgress(request.getProgress());
-        
-        // 4. Auto-complete if 100%
-        if (request.getProgress() >= 100) {
-            userSkill.setStatus("COMPLETED");
-        }
-
-        userSkillRepository.save(userSkill);
-        return "Progress updated";
+                    userSkillRepository.save(userSkill);
+                    return ResponseEntity.ok("Progress updated to " + request.getProgress() + "%");
+                })
+                .orElse(ResponseEntity.status(404).body("Skill record not found for this user"));
     }
 }
