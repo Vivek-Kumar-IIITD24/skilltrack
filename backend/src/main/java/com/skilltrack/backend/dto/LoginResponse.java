@@ -1,21 +1,18 @@
 package com.skilltrack.backend.dto;
 
 public class LoginResponse {
-
     private String token;
+    private Long userId; // ✅ Added this field
 
-    // REQUIRED constructor
-    public LoginResponse(String token) {
+    public LoginResponse(String token, Long userId) {
         this.token = token;
+        this.userId = userId;
     }
 
-    // Getter
-    public String getToken() {
-        return token;
-    }
+    // Getters and Setters
+    public String getToken() { return token; }
+    public void setToken(String token) { this.token = token; }
 
-    // Setter
-    public void setToken(String token) {
-        this.token = token;
-    }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 }

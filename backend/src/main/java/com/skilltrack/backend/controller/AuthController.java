@@ -1,65 +1,53 @@
 package com.skilltrack.backend.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.skilltrack.backend.dto.LoginRequest;
 import com.skilltrack.backend.dto.LoginResponse;
-import com.skilltrack.backend.dto.RegisterRequest;
 import com.skilltrack.backend.entity.User;
 import com.skilltrack.backend.repository.UserRepository;
-import com.skilltrack.backend.security.JwtService; // ✅ CORRECT IMPORT
+import com.skilltrack.backend.security.JwtService;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final JwtService jwtService; // ✅ Renamed to match our file
-    private final PasswordEncoder passwordEncoder;
 
-    public AuthController(UserRepository userRepository,
-                          JwtService jwtService,
-                          PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
+    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService, UserRepository userRepository) {
+        this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
-        this.passwordEncoder = passwordEncoder;
-    }
-
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
-
-        if (userRepository.existsByEmail(request.getEmail())) {
-            return ResponseEntity.badRequest().body("Email already registered");
-        }
-
-        User user = new User();
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("STUDENT"); // Default role
-
-        userRepository.save(user);
-        return ResponseEntity.ok("User registered successfully");
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+    public LoginResponse login(@RequestBody LoginRequest request) {
+        // 1. Authenticate
+        Authentication authentication = authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
 
-        User user = userRepository.findByEmail(request.getEmail()).orElse(null);
+        if (authentication.isAuthenticated()) {
+            // 2. ✅ Get User FIRST (so we have the role)
+            User user = userRepository.findByEmail(request.getEmail())
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        if (user == null ||
-            !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body("Invalid email or password");
+            // 3. ✅ Generate Token using Email AND Role
+            String token = jwtService.generateToken(user.getEmail(), user.getRole());
+            
+            // 4. Return Token + ID
+            return new LoginResponse(token, user.getId());
+        } else {
+            throw new RuntimeException("Invalid Login Credentials");
         }
-
-        // ✅ CORRECT: Passes both Email AND Role to the new Service
-        String token = jwtService.generateToken(user.getEmail(), user.getRole());
-
-        return ResponseEntity.ok(new LoginResponse(token));
     }
 }
