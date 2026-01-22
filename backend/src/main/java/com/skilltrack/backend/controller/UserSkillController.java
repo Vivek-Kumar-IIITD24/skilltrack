@@ -13,7 +13,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -30,6 +32,34 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
+    // ✅ NEW: Get summary stats for the student profile
+    @GetMapping("/stats")
+    public ResponseEntity<?> getStudentStats() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<UserSkill> userSkills = userSkillRepository.findByUserId(user.getId());
+
+        int totalEnrolled = userSkills.size();
+        long completed = userSkills.stream().filter(us -> us.getProgress() >= 100).count();
+        long inProgress = userSkills.stream().filter(us -> us.getProgress() > 0 && us.getProgress() < 100).count();
+        
+        // Calculate average progress across all enrolled skills
+        double avgProgress = userSkills.isEmpty() ? 0 : 
+            userSkills.stream().mapToInt(UserSkill::getProgress).average().orElse(0.0);
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalEnrolled", totalEnrolled);
+        stats.put("completed", completed);
+        stats.put("inProgress", inProgress);
+        stats.put("averageProgress", Math.round(avgProgress));
+        stats.put("userName", user.getName());
+        stats.put("email", user.getEmail());
+
+        return ResponseEntity.ok(stats);
+    }
+
     // ✅ Student: Get my own skills
     @GetMapping("/me")
     public List<UserSkillResponse> getMySkills() {
@@ -40,7 +70,7 @@ public class UserSkillController {
         List<UserSkill> skills = userSkillRepository.findByUserId(user.getId());
 
         return skills.stream().map(us -> new UserSkillResponse(
-                user.getName(), // Pass student name
+                user.getName(), 
                 us.getSkill().getId(), 
                 us.getSkill().getName(), 
                 us.getSkill().getDescription(),
@@ -54,7 +84,7 @@ public class UserSkillController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<UserSkillResponse> getAllProgress() {
         return userSkillRepository.findAll().stream().map(us -> new UserSkillResponse(
-                us.getUser().getName(), // The student's name
+                us.getUser().getName(), 
                 us.getSkill().getId(), 
                 us.getSkill().getName(), 
                 us.getSkill().getDescription(),
