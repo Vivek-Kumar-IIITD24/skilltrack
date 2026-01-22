@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // 1. Create the Axios instance pointing to your Java Backend
 const api = axios.create({
-  baseURL: 'http://localhost:8081/api', // Your Spring Boot URL
+  baseURL: 'https://skilltrack-backend-qlr5.onrender.com', // Your Spring Boot URL
   headers: {
     'Content-Type': 'application/json',
   },
