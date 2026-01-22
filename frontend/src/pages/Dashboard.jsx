@@ -3,124 +3,117 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 function Dashboard() {
-  const [userSkills, setUserSkills] = useState([]);
+  const [enrolledSkills, setEnrolledSkills] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const userId = localStorage.getItem("userId");
 
-  // 1. Load Skills
   useEffect(() => {
-    fetchSkills();
+    fetchMySkills();
   }, []);
 
-  const fetchSkills = () => {
-    api.get("/user-skills/me")
-      .then((res) => setUserSkills(res.data))
-      .catch((err) => console.error("Error loading skills:", err));
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-    navigate("/");
-  };
-
-  // ✅ 2. Handle Progress Update
-  const updateProgress = async (skillId, currentProgress, change) => {
-    const newProgress = Math.min(100, Math.max(0, currentProgress + change)); // Limit between 0 and 100
-    const userId = localStorage.getItem("userId");
-
+  const fetchMySkills = async () => {
     try {
-      await api.put("/user-skills/update", {
-        userId: userId,
-        skillId: skillId,
-        progress: newProgress
-      });
-      // Reload data to show new progress
-      fetchSkills();
-    } catch (error) {
-      console.error("Failed to update progress", error);
+      const res = await api.get("/user-skills/me");
+      setEnrolledSkills(res.data);
+    } catch (err) {
+      console.error("Error fetching enrolled skills:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const completed = userSkills.filter(s => s.status === "COMPLETED").length;
-  const inProgress = userSkills.length - completed;
-  const totalProgress = userSkills.length > 0
-    ? Math.round(userSkills.reduce((acc, curr) => acc + curr.progress, 0) / userSkills.length)
-    : 0;
+  const handleProgressChange = async (skillId, newProgress) => {
+    try {
+      // ✅ Calls the new /update endpoint we created in the backend
+      await api.put("/user-skills/update", {
+        userId: userId,
+        skillId: skillId,
+        progress: parseInt(newProgress),
+      });
+      
+      // Update local state to show change immediately
+      setEnrolledSkills((prev) =>
+        prev.map((s) =>
+          s.skillId === skillId ? { ...s, progress: newProgress } : s
+        )
+      );
+    } catch (err) {
+      alert("Failed to update progress");
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/");
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-5xl mx-auto">
         
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-800">SkillTrack Dashboard</h1>
-          <div className="flex gap-4">
-            <button onClick={() => navigate("/library")} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">My Learning Path</h1>
+          <div className="space-x-4">
+            <button onClick={() => navigate("/library")} className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700">
               Browse Library
             </button>
-            <button onClick={handleLogout} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
+            <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600">
               Logout
             </button>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
-            <h2 className="text-gray-500 font-medium">My Skills</h2>
-            <p className="text-3xl font-bold text-gray-800">{userSkills.length}</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
-            <h2 className="text-gray-500 font-medium">Total Progress</h2>
-            <p className="text-3xl font-bold text-gray-800">{totalProgress}%</p>
-          </div>
-        </div>
+        {loading ? (
+          <p className="text-center text-gray-500">Loading your skills...</p>
+        ) : enrolledSkills.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {enrolledSkills.map((skill) => (
+              <div key={skill.skillId} className="bg-white p-6 rounded-xl shadow-md border border-gray-100">
+                <div className="flex justify-between items-start mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">{skill.skillName}</h2>
+                  <span className={`text-xs px-2 py-1 rounded font-bold uppercase ${
+                    skill.progress >= 100 ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {skill.progress >= 100 ? "Completed" : "In Progress"}
+                  </span>
+                </div>
 
-        {/* Learning Path */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Your Learning Path</h2>
-          
-          {userSkills.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              You haven't started any skills yet.
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {userSkills.map((skill) => (
-                <div key={skill.skillId} className="border-b pb-4 last:border-0">
-                  <div className="flex justify-between items-center mb-2">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">{skill.skillName}</h3>
-                      <p className="text-sm text-gray-500">{skill.description}</p>
-                    </div>
-                    <span className="text-sm font-bold text-blue-600">{skill.progress}%</span>
+                <p className="text-gray-600 text-sm mb-6 line-clamp-2">{skill.description}</p>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm font-medium text-gray-700">
+                    <span>Progress</span>
+                    <span>{skill.progress}%</span>
                   </div>
-
-                  {/* Progress Bar & Buttons */}
-                  <div className="flex items-center gap-4">
-                    <button 
-                      onClick={() => updateProgress(skill.skillId, skill.progress, -10)}
-                      className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 font-bold"
-                    >-</button>
-                    
-                    <div className="flex-1 w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
-                        style={{ width: `${skill.progress}%` }}
-                      ></div>
+                  
+                  {/* 🎚️ Progress Slider */}
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={skill.progress}
+                    onChange={(e) => handleProgressChange(skill.skillId, e.target.value)}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                  />
+                  
+                  <div className="relative pt-1">
+                    <div className="overflow-hidden h-2 mb-4 text-xs flex rounded bg-gray-200">
+                      <div style={{ width: `${skill.progress}%` }} className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500 transition-all duration-500"></div>
                     </div>
-
-                    <button 
-                      onClick={() => updateProgress(skill.skillId, skill.progress, 10)}
-                      className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 font-bold"
-                    >+</button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-200">
+            <p className="text-gray-500 mb-4">You haven't enrolled in any skills yet.</p>
+            <button onClick={() => navigate("/library")} className="text-blue-600 font-bold hover:underline">
+              Visit the Library to start learning →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
