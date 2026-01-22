@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // ✅ Import Hook
+import { useNavigate } from "react-router-dom"; 
 import api from "../services/api";
 
 function Login() {
@@ -8,7 +8,7 @@ function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   
-  const navigate = useNavigate(); // ✅ Initialize Hook
+  const navigate = useNavigate(); 
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -16,15 +16,22 @@ function Login() {
     setLoading(true);
 
     try {
+      // 1. Send Login Request
       const response = await api.post("/auth/login", {
         email: email,
         password: password
       });
 
+      // 2. ✅ Get Token AND User ID from the response
       const token = response.data.token;
+      const userId = response.data.userId; 
+
+      // 3. ✅ Save BOTH to the browser
       localStorage.setItem("token", token);
+      localStorage.setItem("userId", userId); 
       
-      // ✅ Redirect to Dashboard instead of Alert
+      console.log("Login Success! User ID saved:", userId); 
+
       navigate("/dashboard"); 
 
     } catch (err) {
@@ -35,7 +42,6 @@ function Login() {
     }
   };
 
-  // ... (The rest of the JSX stays exactly the same)
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md">
@@ -57,7 +63,7 @@ function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              placeholder="admin@example.com"
+              placeholder="student1@test.com"
               required
             />
           </div>

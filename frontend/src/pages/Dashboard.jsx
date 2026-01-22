@@ -37,12 +37,22 @@ function Dashboard() {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">SkillTrack Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-          >
-            Logout
-          </button>
+          
+          <div className="flex gap-4"> {/* ✅ Flex container for buttons */}
+            <button
+              onClick={() => navigate("/library")} // ✅ Go to Library
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            >
+              Browse Library
+            </button>
+            
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         {/* Error Message */}

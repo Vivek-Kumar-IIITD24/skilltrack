@@ -34,14 +34,22 @@ public class SecurityConfig {
 
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // ✅ ENABLE CORS
+            .cors(cors -> cors.configurationSource(corsConfigurationSource())) 
             .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
+                // 1. Allow everyone to Login/Register
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/user-skills/me").authenticated()
-                .requestMatchers("/api/user-skills/**").hasRole("ADMIN")
+                
+                // 2. Allow everyone to SEE the Library (Get all skills)
+                .requestMatchers("/api/skills").permitAll()
+
+                // 3. ✅ THE FIX: Allow ANY logged-in user (Student or Admin) to use user-skills
+                // (Previously this was .hasRole("ADMIN"), which blocked your Student)
+                .requestMatchers("/api/user-skills/**").authenticated()
+
+                // 4. Everything else requires login
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -49,11 +57,11 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ NEW: Allow React (Port 5173) to talk to us
+    // ✅ CORS Configuration for React (Port 5173)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173")); // Allow Frontend
+        configuration.setAllowedOrigins(List.of("http://localhost:5173")); 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
