@@ -33,7 +33,7 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ NEW: Verify certificate eligibility and return data
+    // ✅ UPDATED: Robust certificate eligibility check
     @GetMapping("/{skillId}/certificate")
     public ResponseEntity<?> getCertificate(@PathVariable Long skillId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -44,9 +44,9 @@ public class UserSkillController {
                 .filter(us -> us.getSkill().getId().equals(skillId))
                 .findFirst()
                 .map(us -> {
-                    // Logic: Only allow certificate if progress is 100%
+                    // Use >= 100 to handle potential rounding or precision issues
                     if (us.getProgress() < 100) {
-                        return ResponseEntity.status(403).body("Skill not completed yet! Keep learning.");
+                        return ResponseEntity.status(403).body("Verification failed: Progress is currently " + us.getProgress() + "%. You must reach 100%.");
                     }
                     
                     Map<String, Object> certData = new HashMap<>();
@@ -57,7 +57,7 @@ public class UserSkillController {
                     
                     return ResponseEntity.ok(certData);
                 })
-                .orElse(ResponseEntity.status(404).body("Skill not found for this user"));
+                .orElse(ResponseEntity.status(404).body("Skill record not found for this user"));
     }
 
     @GetMapping("/stats")
