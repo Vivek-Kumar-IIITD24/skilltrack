@@ -1,126 +1,126 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api"; // Import our API bridge
+import api from "../services/api";
 
 function Dashboard() {
-  const [skills, setSkills] = useState([]); // Store the list of skills
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [userSkills, setUserSkills] = useState([]);
   const navigate = useNavigate();
 
-  // 1. Fetch Data Automatically on Load
+  // 1. Load Skills
   useEffect(() => {
-    fetchMySkills();
+    fetchSkills();
   }, []);
 
-  const fetchMySkills = async () => {
-    try {
-      // Calls GET http://localhost:8081/api/user-skills/me
-      const response = await api.get("/user-skills/me"); 
-      setSkills(response.data); // Save the real data from Java
-    } catch (err) {
-      console.error("Failed to fetch skills", err);
-      setError("Could not load your progress. Are you logged in?");
-    } finally {
-      setLoading(false);
-    }
+  const fetchSkills = () => {
+    api.get("/user-skills/me")
+      .then((res) => setUserSkills(res.data))
+      .catch((err) => console.error("Error loading skills:", err));
   };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("userId");
     navigate("/");
   };
 
+  // ✅ 2. Handle Progress Update
+  const updateProgress = async (skillId, currentProgress, change) => {
+    const newProgress = Math.min(100, Math.max(0, currentProgress + change)); // Limit between 0 and 100
+    const userId = localStorage.getItem("userId");
+
+    try {
+      await api.put("/user-skills/update", {
+        userId: userId,
+        skillId: skillId,
+        progress: newProgress
+      });
+      // Reload data to show new progress
+      fetchSkills();
+    } catch (error) {
+      console.error("Failed to update progress", error);
+    }
+  };
+
+  const completed = userSkills.filter(s => s.status === "COMPLETED").length;
+  const inProgress = userSkills.length - completed;
+  const totalProgress = userSkills.length > 0
+    ? Math.round(userSkills.reduce((acc, curr) => acc + curr.progress, 0) / userSkills.length)
+    : 0;
+
   return (
     <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
+        
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-md p-6 flex justify-between items-center mb-6">
+        <div className="bg-white rounded-lg shadow-md p-6 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-800">SkillTrack Dashboard</h1>
-          
-          <div className="flex gap-4"> {/* ✅ Flex container for buttons */}
-            <button
-              onClick={() => navigate("/library")} // ✅ Go to Library
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-            >
+          <div className="flex gap-4">
+            <button onClick={() => navigate("/library")} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
               Browse Library
             </button>
-            
-            <button
-              onClick={handleLogout}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition"
-            >
+            <button onClick={handleLogout} className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
               Logout
             </button>
           </div>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-100 text-red-700 p-3 rounded mb-6 text-center">
-            {error}
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+            <h2 className="text-gray-500 font-medium">My Skills</h2>
+            <p className="text-3xl font-bold text-gray-800">{userSkills.length}</p>
           </div>
-        )}
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-            <h2 className="text-xl font-semibold mb-2">My Skills</h2>
-            <p className="text-gray-600 text-3xl font-bold">
-              {loading ? "..." : skills.length} 
-            </p>
-            <p className="text-sm text-gray-500">Active skills being tracked</p>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-            <h2 className="text-xl font-semibold mb-2">Total Progress</h2>
-            <p className="text-gray-600 text-3xl font-bold">
-               {/* Calculate average progress */}
-               {skills.length > 0 
-                 ? Math.round(skills.reduce((acc, curr) => acc + curr.progress, 0) / skills.length) 
-                 : 0}%
-            </p>
-            <p className="text-sm text-gray-500">Average completion rate</p>
+          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+            <h2 className="text-gray-500 font-medium">Total Progress</h2>
+            <p className="text-3xl font-bold text-gray-800">{totalProgress}%</p>
           </div>
         </div>
 
-        {/* Skills List */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-bold text-gray-800">Your Learning Path</h3>
-          </div>
+        {/* Learning Path */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Your Learning Path</h2>
           
-          {loading ? (
-            <div className="p-6 text-center text-gray-500">Loading skills...</div>
-          ) : skills.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
-              <p className="mb-2">You haven't started any skills yet.</p>
-              <button className="text-blue-600 hover:underline">
-                Browse Library (Coming Soon)
-              </button>
+          {userSkills.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              You haven't started any skills yet.
             </div>
           ) : (
-            <ul className="divide-y divide-gray-200">
-              {skills.map((item) => (
-                <li key={item.skillId} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
-                  <div>
-                    <h4 className="font-semibold text-lg text-gray-800">{item.skillName}</h4>
-                    <p className="text-gray-500 text-sm">{item.description}</p>
+            <div className="space-y-6">
+              {userSkills.map((skill) => (
+                <div key={skill.skillId} className="border-b pb-4 last:border-0">
+                  <div className="flex justify-between items-center mb-2">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-800">{skill.skillName}</h3>
+                      <p className="text-sm text-gray-500">{skill.description}</p>
+                    </div>
+                    <span className="text-sm font-bold text-blue-600">{skill.progress}%</span>
                   </div>
-                  <div className="flex items-center">
-                    <div className="w-32 bg-gray-200 rounded-full h-2.5 mr-4">
+
+                  {/* Progress Bar & Buttons */}
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => updateProgress(skill.skillId, skill.progress, -10)}
+                      className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 font-bold"
+                    >-</button>
+                    
+                    <div className="flex-1 w-full bg-gray-200 rounded-full h-2.5">
                       <div 
-                        className="bg-blue-600 h-2.5 rounded-full" 
-                        style={{ width: `${item.progress}%` }}
+                        className="bg-blue-600 h-2.5 rounded-full transition-all duration-500" 
+                        style={{ width: `${skill.progress}%` }}
                       ></div>
                     </div>
-                    <span className="font-bold text-gray-700">{item.progress}%</span>
+
+                    <button 
+                      onClick={() => updateProgress(skill.skillId, skill.progress, 10)}
+                      className="w-8 h-8 flex items-center justify-center bg-gray-200 rounded-full hover:bg-gray-300 font-bold"
+                    >+</button>
                   </div>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
+
       </div>
     </div>
   );

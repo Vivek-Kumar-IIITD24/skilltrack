@@ -10,6 +10,7 @@ import com.skilltrack.backend.repository.UserSkillRepository;
 import com.skilltrack.backend.repository.SkillRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PutMapping;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -67,5 +68,32 @@ public class UserSkillController {
 
         userSkillRepository.save(userSkill);
         return "Skill assigned successfully";
+
+
+    }
+
+    // ✅ NEW: Update Progress Endpoint
+    @PutMapping("/update")
+    public String updateProgress(@RequestBody UserSkillRequest request) {
+        // 1. Find the User
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        // 2. Find the specific skill they are learning
+        UserSkill userSkill = userSkillRepository.findByUserId(user.getId()).stream()
+                .filter(us -> us.getSkill().getId().equals(request.getSkillId()))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Skill not found for this user"));
+
+        // 3. Update the progress
+        userSkill.setProgress(request.getProgress());
+        
+        // 4. Auto-complete if 100%
+        if (request.getProgress() >= 100) {
+            userSkill.setStatus("COMPLETED");
+        }
+
+        userSkillRepository.save(userSkill);
+        return "Progress updated";
     }
 }
