@@ -13,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,33 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ NEW: Get summary stats for the student profile
+    // ✅ NEW: Verify certificate eligibility and return data
+    @GetMapping("/{skillId}/certificate")
+    public ResponseEntity<?> getCertificate(@PathVariable Long skillId) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return userSkillRepository.findByUserId(user.getId()).stream()
+                .filter(us -> us.getSkill().getId().equals(skillId))
+                .findFirst()
+                .map(us -> {
+                    // Logic: Only allow certificate if progress is 100%
+                    if (us.getProgress() < 100) {
+                        return ResponseEntity.status(403).body("Skill not completed yet! Keep learning.");
+                    }
+                    
+                    Map<String, Object> certData = new HashMap<>();
+                    certData.put("studentName", user.getName());
+                    certData.put("skillName", us.getSkill().getName());
+                    certData.put("completionDate", LocalDate.now().toString());
+                    certData.put("certificateId", "CERT-" + us.getId() + "-" + user.getId());
+                    
+                    return ResponseEntity.ok(certData);
+                })
+                .orElse(ResponseEntity.status(404).body("Skill not found for this user"));
+    }
+
     @GetMapping("/stats")
     public ResponseEntity<?> getStudentStats() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -45,7 +72,6 @@ public class UserSkillController {
         long completed = userSkills.stream().filter(us -> us.getProgress() >= 100).count();
         long inProgress = userSkills.stream().filter(us -> us.getProgress() > 0 && us.getProgress() < 100).count();
         
-        // Calculate average progress across all enrolled skills
         double avgProgress = userSkills.isEmpty() ? 0 : 
             userSkills.stream().mapToInt(UserSkill::getProgress).average().orElse(0.0);
 
@@ -60,7 +86,6 @@ public class UserSkillController {
         return ResponseEntity.ok(stats);
     }
 
-    // ✅ Student: Get my own skills
     @GetMapping("/me")
     public List<UserSkillResponse> getMySkills() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -79,7 +104,6 @@ public class UserSkillController {
         )).collect(Collectors.toList());
     }
 
-    // ✅ Admin: Get ALL student progress records
     @GetMapping("/admin/all")
     @PreAuthorize("hasRole('ADMIN')")
     public List<UserSkillResponse> getAllProgress() {
