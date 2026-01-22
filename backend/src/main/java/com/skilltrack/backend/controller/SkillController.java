@@ -3,6 +3,7 @@ package com.skilltrack.backend.controller;
 import com.skilltrack.backend.entity.Skill;
 import com.skilltrack.backend.repository.SkillRepository;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,13 +18,25 @@ public class SkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ ADMIN: Add new skill
+    // ✅ CREATE SKILL (Fixed: Added @RequestBody & updated Security)
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<?> addSkill(@RequestBody Skill skill) {
-        return ResponseEntity.ok(skillRepository.save(skill));
+    public ResponseEntity<?> createSkill(@RequestBody Skill skill) {
+        
+        // Safety check: Don't allow empty names
+        if (skill.getName() == null || skill.getName().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Skill name cannot be empty");
+        }
+
+        if (skillRepository.existsByName(skill.getName())) {
+             return ResponseEntity.badRequest().body("Skill already exists");
+        }
+
+        Skill savedSkill = skillRepository.save(skill);
+        return ResponseEntity.ok(savedSkill);
     }
 
-    // ✅ ADMIN: Get all skills
+    // ✅ GET ALL SKILLS (Public/Authenticated)
     @GetMapping
     public List<Skill> getAllSkills() {
         return skillRepository.findAll();

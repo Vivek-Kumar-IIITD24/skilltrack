@@ -1,28 +1,30 @@
 package com.skilltrack.backend.security;
 
-import com.skilltrack.backend.util.JwtUtil;
-import io.jsonwebtoken.Claims;
+import java.io.IOException;
+import java.util.List;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import com.skilltrack.backend.repository.UserRepository;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.util.Collections;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    private final JwtService jwtService;
+    private final UserRepository userRepository;
 
-    public JwtAuthFilter(JwtUtil jwtUtil) {
-        this.jwtUtil = jwtUtil;
+    public JwtAuthFilter(JwtService jwtService, UserRepository userRepository) {
+        this.jwtService = jwtService;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -32,40 +34,45 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        String header = request.getHeader("Authorization");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (header == null || !header.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7);
+        String token = header.substring(7);
 
         try {
-            Claims claims = jwtUtil.extractAllClaims(token);
-            String email = claims.getSubject();
-            String role = claims.get("role", String.class);
+            String email = jwtService.extractUsername(token);
+            String role = jwtService.extractRole(token);
 
-            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (email != null &&
+                SecurityContextHolder.getContext().getAuthentication() == null &&
+                jwtService.isTokenValid(token)) {
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                email,
-                                null,
-                                Collections.singletonList(
-                                        new SimpleGrantedAuthority("ROLE_" + role)
-                                )
-                        );
+                if (userRepository.findByEmail(email).isPresent()) {
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+                    // --- DEBUGGING LOGS (Check your VS Code Terminal for these!) ---
+                    System.out.println("DEBUG: Role extracted from Token: '" + role + "'");
+                    System.out.println("DEBUG: Final Authority being set: 'ROLE_" + role + "'");
+                    // -------------------------------------------------------------
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                    SimpleGrantedAuthority authority =
+                            new SimpleGrantedAuthority("ROLE_" + role);
+
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(
+                                    email,
+                                    null,
+                                    List.of(authority)
+                            );
+
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             }
-
         } catch (Exception e) {
-            // invalid token → ignore
+            System.out.println("DEBUG: Token validation error: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);

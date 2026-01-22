@@ -3,6 +3,8 @@ package com.skilltrack.backend.config;
 import com.skilltrack.backend.security.JwtAuthFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -22,44 +24,36 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            // ❌ Disable CSRF (JWT based)
-            .csrf(csrf -> csrf.disable())
-
-            // ✅ Stateless session
-            .sessionManagement(session ->
+            .csrf(csrf -> csrf.disable()) // Disable CSRF for APIs
+            .sessionManagement(session -> 
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
-
-            // ✅ Authorization rules
             .authorizeHttpRequests(auth -> auth
-
-                // 🔓 Swagger (PUBLIC)
-                .requestMatchers(
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html"
-                ).permitAll()
-
-                // 🔓 Auth APIs
+                // 1. Public Endpoints
                 .requestMatchers("/api/auth/**").permitAll()
 
-                // 🔐 ADMIN only APIs
-                .requestMatchers("/api/users/**").hasRole("ADMIN")
+                // 2. Student Endpoints (Must come BEFORE Admin rule)
+                .requestMatchers("/api/user-skills/me").authenticated()
 
-                // 🔐 Everything else needs JWT
+                // 3. Admin Endpoints (Locks down all other user-skills URLs)
+                .requestMatchers("/api/user-skills/**").hasRole("ADMIN")
+
+                // 4. Default Block
                 .anyRequest().authenticated()
             )
-
-            // 🔑 JWT Filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // 🔐 Password encoder
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

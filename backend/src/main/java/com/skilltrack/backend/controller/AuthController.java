@@ -10,21 +10,21 @@ import com.skilltrack.backend.dto.LoginResponse;
 import com.skilltrack.backend.dto.RegisterRequest;
 import com.skilltrack.backend.entity.User;
 import com.skilltrack.backend.repository.UserRepository;
-import com.skilltrack.backend.util.JwtUtil;
+import com.skilltrack.backend.security.JwtService; // ✅ CORRECT IMPORT
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final UserRepository userRepository;
-    private final JwtUtil jwtUtil;
+    private final JwtService jwtService; // ✅ Renamed to match our file
     private final PasswordEncoder passwordEncoder;
 
     public AuthController(UserRepository userRepository,
-                          JwtUtil jwtUtil,
+                          JwtService jwtService,
                           PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
-        this.jwtUtil = jwtUtil;
+        this.jwtService = jwtService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -39,7 +39,7 @@ public class AuthController {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("STUDENT");
+        user.setRole("STUDENT"); // Default role
 
         userRepository.save(user);
         return ResponseEntity.ok("User registered successfully");
@@ -57,8 +57,8 @@ public class AuthController {
                     .body("Invalid email or password");
         }
 
-        // ✅ PASS ROLE INTO JWT
-        String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
+        // ✅ CORRECT: Passes both Email AND Role to the new Service
+        String token = jwtService.generateToken(user.getEmail(), user.getRole());
 
         return ResponseEntity.ok(new LoginResponse(token));
     }
