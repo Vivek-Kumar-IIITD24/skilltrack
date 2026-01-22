@@ -45,7 +45,8 @@ public class AuthController {
             String token = jwtService.generateToken(user.getEmail(), user.getRole());
             
             // 4. Return Token + ID
-            return new LoginResponse(token, user.getId());
+            // ✅ Add user.getRole() as the third argument
+            return new LoginResponse(token, user.getId(), user.getRole());
         } else {
             throw new RuntimeException("Invalid Login Credentials");
         }

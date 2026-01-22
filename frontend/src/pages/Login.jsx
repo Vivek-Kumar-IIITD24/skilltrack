@@ -22,17 +22,22 @@ function Login() {
         password: password
       });
 
-      // 2. ✅ Get Token AND User ID from the response
-      const token = response.data.token;
-      const userId = response.data.userId; 
+      // 2. ✅ Get Token, User ID, and Role from the response
+      const { token, userId, role } = response.data; 
 
-      // 3. ✅ Save BOTH to the browser
+      // 3. ✅ Save everything to the browser for later use
       localStorage.setItem("token", token);
       localStorage.setItem("userId", userId); 
+      localStorage.setItem("role", role); // Optional: store role if needed elsewhere
       
-      console.log("Login Success! User ID saved:", userId); 
+      console.log("Login Success! Role:", role); 
 
-      navigate("/dashboard"); 
+      // 4. ✅ Automatic Redirection based on Role
+      if (role === "ADMIN") {
+        navigate("/admin"); // Redirect Admins to the Command Center
+      } else {
+        navigate("/dashboard"); // Redirect Students to their Learning Path
+      }
 
     } catch (err) {
       console.error("Login Failed:", err);
@@ -63,7 +68,7 @@ function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              placeholder="student1@test.com"
+              placeholder="admin@test.com"
               required
             />
           </div>

@@ -18,20 +18,22 @@ public class SkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ CREATE SKILL (Fixed: Added @RequestBody & updated Security)
+    // ✅ CREATE SKILL (Unified: Safe and Secure)
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<?> createSkill(@RequestBody Skill skill) {
+    public ResponseEntity<?> addSkill(@RequestBody Skill skill) {
         
-        // Safety check: Don't allow empty names
+        // 1. Safety check: Don't allow empty names
         if (skill.getName() == null || skill.getName().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("Skill name cannot be empty");
         }
 
+        // 2. Check if the skill name is already taken
         if (skillRepository.existsByName(skill.getName())) {
              return ResponseEntity.badRequest().body("Skill already exists");
         }
 
+        // 3. Save and return the new skill
         Skill savedSkill = skillRepository.save(skill);
         return ResponseEntity.ok(savedSkill);
     }
