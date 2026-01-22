@@ -33,7 +33,39 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ UPDATED: Robust certificate eligibility check
+    // ✅ NEW: Global leaderboard data for students
+    @GetMapping("/leaderboard")
+    public ResponseEntity<List<Map<String, Object>>> getLeaderboard() {
+        // 1. Get all users with the role 'STUDENT'
+        List<User> students = userRepository.findAll().stream()
+                .filter(u -> "STUDENT".equalsIgnoreCase(u.getRole()))
+                .collect(Collectors.toList());
+
+        List<Map<String, Object>> leaderboard = students.stream().map(student -> {
+            List<UserSkill> skills = userSkillRepository.findByUserId(student.getId());
+            
+            long completedCount = skills.stream().filter(us -> us.getProgress() >= 100).count();
+            double avgProgress = skills.isEmpty() ? 0 : 
+                skills.stream().mapToInt(UserSkill::getProgress).average().orElse(0.0);
+
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("name", student.getName());
+            entry.put("completions", completedCount);
+            entry.put("avgProgress", Math.round(avgProgress));
+            entry.put("totalEnrolled", skills.size());
+            return entry;
+        })
+        // 2. Sort by completions (desc), then average progress (desc)
+        .sorted((a, b) -> {
+            int comp = Long.compare((long) b.get("completions"), (long) a.get("completions"));
+            if (comp != 0) return comp;
+            return Long.compare((long) b.get("avgProgress"), (long) a.get("avgProgress"));
+        })
+        .collect(Collectors.toList());
+
+        return ResponseEntity.ok(leaderboard);
+    }
+
     @GetMapping("/{skillId}/certificate")
     public ResponseEntity<?> getCertificate(@PathVariable Long skillId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -44,7 +76,6 @@ public class UserSkillController {
                 .filter(us -> us.getSkill().getId().equals(skillId))
                 .findFirst()
                 .map(us -> {
-                    // Use >= 100 to handle potential rounding or precision issues
                     if (us.getProgress() < 100) {
                         return ResponseEntity.status(403).body("Verification failed: Progress is currently " + us.getProgress() + "%. You must reach 100%.");
                     }
