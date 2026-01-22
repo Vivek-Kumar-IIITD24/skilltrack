@@ -4,23 +4,24 @@ import api from "../services/api";
 
 function AdminDashboard() {
   const [skills, setSkills] = useState([]);
-  const [analytics, setAnalytics] = useState([]); // ✅ New: Analytics state
+  const [analytics, setAnalytics] = useState([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState("Beginner");
+  const [category, setCategory] = useState("General"); // ✅ NEW: Category state
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchSkills();
-    fetchAnalytics(); // ✅ Load analytics on startup
+    fetchAnalytics();
   }, []);
 
   const fetchSkills = async () => {
     try {
       const res = await api.get("/skills");
       setSkills(res.data);
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error("Error loading skills:", err); }
   };
 
   const fetchAnalytics = async () => {
@@ -33,11 +34,17 @@ function AdminDashboard() {
   const handleAddSkill = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/skills", { name, description, level });
+      // ✅ Now sending 'category' to the backend
+      await api.post("/skills", { name, description, level, category });
       setMessage("✅ Skill added successfully!");
-      setName(""); setDescription(""); setLevel("Beginner");
+      setName(""); 
+      setDescription(""); 
+      setLevel("Beginner");
+      setCategory("General");
       fetchSkills();
-    } catch (error) { setMessage("❌ Failed to add skill."); }
+    } catch (error) { 
+      setMessage("❌ Failed to add skill. Ensure name is unique."); 
+    }
   };
 
   const handleLogout = () => {
@@ -59,12 +66,15 @@ function AdminDashboard() {
         {/* --- Section 1: Skill Management --- */}
         <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700">
           <h2 className="text-2xl font-bold mb-6 text-blue-400">Create New Skill</h2>
-          <form onSubmit={handleAddSkill} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {message && <div className="p-3 mb-4 rounded bg-gray-700 text-center font-bold">{message}</div>}
+          
+          <form onSubmit={handleAddSkill} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <input
               type="text" placeholder="Skill Name" value={name}
               onChange={(e) => setName(e.target.value)}
               className="p-3 rounded-lg bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none" required
             />
+            
             <select 
               value={level} onChange={(e) => setLevel(e.target.value)}
               className="p-3 rounded-lg bg-gray-700 border border-gray-600 outline-none"
@@ -73,18 +83,58 @@ function AdminDashboard() {
               <option value="Intermediate">Intermediate</option>
               <option value="Advanced">Advanced</option>
             </select>
+
+            {/* ✅ NEW: Category Input Field */}
+            <input
+              type="text" placeholder="Category (e.g. Frontend)" value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="p-3 rounded-lg bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none" required
+            />
+
             <input
               type="text" placeholder="Description" value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="p-3 rounded-lg bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none" required
             />
-            <button type="submit" className="md:col-span-3 bg-blue-600 py-3 rounded-lg font-black uppercase hover:bg-blue-500 transition">
+
+            <button type="submit" className="lg:col-span-4 bg-blue-600 py-3 rounded-lg font-black uppercase hover:bg-blue-500 transition shadow-lg">
               Publish Skill
             </button>
           </form>
         </div>
 
-        {/* --- Section 2: Student Progress Analytics --- */}
+        {/* --- Section 2: Skill Inventory List --- */}
+        <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
+          <div className="p-6 bg-gray-750 border-b border-gray-700">
+            <h2 className="text-2xl font-bold text-blue-400">Skill Inventory</h2>
+          </div>
+          <table className="w-full text-left">
+            <thead className="bg-gray-700 text-gray-300 uppercase text-xs font-bold">
+              <tr>
+                <th className="p-4">Skill Name</th>
+                <th className="p-4">Category</th> {/* ✅ NEW Column */}
+                <th className="p-4">Level</th>
+                <th className="p-4">Description</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-700">
+              {skills.map((skill) => (
+                <tr key={skill.id} className="hover:bg-gray-750 transition">
+                  <td className="p-4 font-bold text-white">{skill.name}</td>
+                  <td className="p-4 text-blue-300 font-medium">{skill.category || "General"}</td>
+                  <td className="p-4">
+                    <span className="px-2 py-1 rounded text-[10px] font-black bg-gray-900 border border-gray-600 uppercase">
+                      {skill.level}
+                    </span>
+                  </td>
+                  <td className="p-4 text-gray-400 text-sm">{skill.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* --- Section 3: Student Progress Analytics --- */}
         <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
           <div className="p-6 bg-gray-750 border-b border-gray-700">
             <h2 className="text-2xl font-bold text-green-400">Student Progress Tracking</h2>
