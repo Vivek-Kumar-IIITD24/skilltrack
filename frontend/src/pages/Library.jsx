@@ -4,7 +4,7 @@ import api from "../services/api";
 
 function Library() {
   const [skills, setSkills] = useState([]);
-  const [searchQuery, setSearchQuery] = useState(""); // 🔍 New: Search query state
+  const [searchQuery, setSearchQuery] = useState("");
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
@@ -31,10 +31,11 @@ function Library() {
     }
   };
 
-  // ✅ 3. Search Logic: Filter skills based on user input
+  // 3. Search Logic: Filter skills based on name, description, or level
   const filteredSkills = skills.filter((skill) =>
     skill.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    skill.description.toLowerCase().includes(searchQuery.toLowerCase())
+    skill.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (skill.level && skill.level.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -56,7 +57,7 @@ function Library() {
         <div className="mb-8">
           <input
             type="text"
-            placeholder="Search for skills (e.g. Java, Python, Frontend)..."
+            placeholder="Search by name, level, or description..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full p-4 rounded-lg border border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none text-gray-700"
@@ -65,7 +66,7 @@ function Library() {
         
         {/* Status Message */}
         {message && (
-          <div className={`p-4 mb-6 rounded ${message.includes("success") ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+          <div className={`p-4 mb-6 rounded text-center font-medium ${message.includes("✅") ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-100 text-red-700 border border-red-200"}`}>
             {message}
           </div>
         )}
@@ -74,22 +75,34 @@ function Library() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredSkills.length > 0 ? (
             filteredSkills.map((skill) => (
-              <div key={skill.id} className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition flex flex-col justify-between">
+              <div key={skill.id} className="bg-white p-6 rounded-lg shadow hover:shadow-xl transition-shadow flex flex-col justify-between border border-gray-200">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">{skill.name}</h3>
-                  <p className="text-gray-600 mb-4 h-12 overflow-hidden">{skill.description}</p>
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="text-xl font-bold text-gray-800 leading-tight">{skill.name}</h3>
+                    {/* ✅ Skill Level Badge */}
+                    <span className={`ml-2 px-2 py-1 rounded text-[10px] uppercase font-black tracking-wider whitespace-nowrap ${
+                      skill.level === 'Advanced' ? 'bg-red-100 text-red-700 border border-red-200' : 
+                      skill.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' : 
+                      'bg-green-100 text-green-700 border border-green-200'
+                    }`}>
+                      {skill.level || "Beginner"}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 mb-6 text-sm line-clamp-3 leading-relaxed">
+                    {skill.description}
+                  </p>
                 </div>
                 <button 
                   onClick={() => enrollSkill(skill.id)}
-                  className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition font-semibold"
+                  className="w-full bg-blue-600 text-white py-2.5 rounded-md hover:bg-blue-700 transition-colors font-bold shadow-sm"
                 >
                   Enroll Now
                 </button>
               </div>
             ))
           ) : (
-            <div className="col-span-full text-center py-10">
-              <p className="text-gray-500 text-lg">No skills found matching "{searchQuery}"</p>
+            <div className="col-span-full text-center py-20 bg-white rounded-lg border-2 border-dashed border-gray-300">
+              <p className="text-gray-400 text-xl font-medium">No skills found matching "{searchQuery}"</p>
             </div>
           )}
         </div>
