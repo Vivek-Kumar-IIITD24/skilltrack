@@ -16,7 +16,7 @@ import com.skilltrack.backend.repository.UserRepository;
 import com.skilltrack.backend.security.JwtService;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth") // ✅ FIXED: Removed "/api" to match your Frontend
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -37,15 +37,14 @@ public class AuthController {
         );
 
         if (authentication.isAuthenticated()) {
-            // 2. ✅ Get User FIRST (so we have the role)
+            // 2. Get User
             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-            // 3. ✅ Generate Token using Email AND Role
+            // 3. Generate Token
             String token = jwtService.generateToken(user.getEmail(), user.getRole());
             
-            // 4. Return Token + ID
-            // ✅ Add user.getRole() as the third argument
+            // 4. Return Response
             return new LoginResponse(token, user.getId(), user.getRole());
         } else {
             throw new RuntimeException("Invalid Login Credentials");
