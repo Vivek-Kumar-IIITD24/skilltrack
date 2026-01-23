@@ -33,10 +33,54 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ NEW: Global leaderboard data for students
+    // ✅ NEW: SELF-ENROLLMENT (Student clicks "Start Learning")
+    @PostMapping("/enroll")
+    public ResponseEntity<?> enrollSelf(@RequestBody Map<String, Long> payload) {
+        // 1. Get the logged-in user from the Token
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Long skillId = payload.get("skillId");
+
+        // 2. Check if already enrolled
+        if (userSkillRepository.existsByUserIdAndSkillId(user.getId(), skillId)) {
+            return ResponseEntity.badRequest().body("You are already enrolled in this skill!");
+        }
+
+        // 3. Find the skill
+        Skill skill = skillRepository.findById(skillId)
+                .orElseThrow(() -> new RuntimeException("Skill not found"));
+
+        // 4. Save the enrollment
+        UserSkill enrollment = new UserSkill(user, skill);
+        userSkillRepository.save(enrollment);
+
+        return ResponseEntity.ok("Enrolled successfully!");
+    }
+
+    // ✅ GET MY SKILLS (What am I learning?)
+    @GetMapping("/me")
+    public List<UserSkillResponse> getMySkills() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<UserSkill> skills = userSkillRepository.findByUserId(user.getId());
+
+        return skills.stream().map(us -> new UserSkillResponse(
+                user.getName(), 
+                us.getSkill().getId(), 
+                us.getSkill().getName(), 
+                us.getSkill().getDescription(),
+                us.getProgress(),
+                us.getStatus()
+        )).collect(Collectors.toList());
+    }
+
+    // ✅ LEADERBOARD (Who is winning?)
     @GetMapping("/leaderboard")
     public ResponseEntity<List<Map<String, Object>>> getLeaderboard() {
-        // 1. Get all users with the role 'STUDENT'
         List<User> students = userRepository.findAll().stream()
                 .filter(u -> "STUDENT".equalsIgnoreCase(u.getRole()))
                 .collect(Collectors.toList());
@@ -55,7 +99,6 @@ public class UserSkillController {
             entry.put("totalEnrolled", skills.size());
             return entry;
         })
-        // 2. Sort by completions (desc), then average progress (desc)
         .sorted((a, b) -> {
             int comp = Long.compare((long) b.get("completions"), (long) a.get("completions"));
             if (comp != 0) return comp;
@@ -66,6 +109,7 @@ public class UserSkillController {
         return ResponseEntity.ok(leaderboard);
     }
 
+    // ✅ CERTIFICATE (Proof of completion)
     @GetMapping("/{skillId}/certificate")
     public ResponseEntity<?> getCertificate(@PathVariable Long skillId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -91,6 +135,7 @@ public class UserSkillController {
                 .orElse(ResponseEntity.status(404).body("Skill record not found for this user"));
     }
 
+    // ✅ STUDENT STATS (Dashboard numbers)
     @GetMapping("/stats")
     public ResponseEntity<?> getStudentStats() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -117,24 +162,6 @@ public class UserSkillController {
         return ResponseEntity.ok(stats);
     }
 
-    @GetMapping("/me")
-    public List<UserSkillResponse> getMySkills() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        List<UserSkill> skills = userSkillRepository.findByUserId(user.getId());
-
-        return skills.stream().map(us -> new UserSkillResponse(
-                user.getName(), 
-                us.getSkill().getId(), 
-                us.getSkill().getName(), 
-                us.getSkill().getDescription(),
-                us.getProgress(),
-                us.getStatus()
-        )).collect(Collectors.toList());
-    }
-
     @GetMapping("/admin/all")
     @PreAuthorize("hasRole('ADMIN')")
     public List<UserSkillResponse> getAllProgress() {
@@ -148,23 +175,7 @@ public class UserSkillController {
         )).collect(Collectors.toList());
     }
 
-    @PostMapping("/assign")
-    public String assignSkill(@RequestBody UserSkillRequest request) {
-        User user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Skill skill = skillRepository.findById(request.getSkillId())
-                .orElseThrow(() -> new RuntimeException("Skill not found"));
-
-        UserSkill userSkill = new UserSkill();
-        userSkill.setUser(user);
-        userSkill.setSkill(skill);
-        userSkill.setProgress(0);
-        userSkill.setStatus("IN_PROGRESS");
-
-        userSkillRepository.save(userSkill);
-        return "Skill assigned successfully";
-    }
-
+    // ✅ UPDATE PROGRESS (Moving the bar)
     @PutMapping("/update")
     public ResponseEntity<?> updateProgress(@RequestBody UserSkillRequest request) {
         return userSkillRepository.findByUserId(request.getUserId()).stream()

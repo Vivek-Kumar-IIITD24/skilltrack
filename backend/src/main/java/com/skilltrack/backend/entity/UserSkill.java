@@ -20,11 +20,18 @@ public class UserSkill {
 
     private int progress; // 0 to 100
     
-    // ✅ NEW FIELD: Status (Learning, Completed, etc.)
+    // Status (ENROLLED, IN_PROGRESS, COMPLETED)
     private String status; 
 
     // Constructors
     public UserSkill() {}
+
+    public UserSkill(User user, Skill skill) {
+        this.user = user;
+        this.skill = skill;
+        this.progress = 0;
+        this.status = "ENROLLED";
+    }
 
     public UserSkill(User user, Skill skill, int progress, String status) {
         this.user = user;
@@ -46,7 +53,6 @@ public class UserSkill {
     public int getProgress() { return progress; }
     public void setProgress(int progress) { this.progress = progress; }
 
-    // ✅ NEW Getters/Setters for Status
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 }
