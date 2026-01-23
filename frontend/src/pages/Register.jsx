@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react"; // Make sure you have this icon pack or use text
 
 const Register = () => {
   const [name, setName] = useState("");
