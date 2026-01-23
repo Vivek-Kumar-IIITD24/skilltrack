@@ -44,9 +44,14 @@ public class AuthController {
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        // Default all new registrations to "STUDENT"
-        user.setRole("STUDENT");
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        
+        // ✅ Use the role requested by the user, or default to STUDENT
+        if (request.getRole() != null && !request.getRole().isEmpty()) {
+            user.setRole(request.getRole().toUpperCase());
+        } else {
+            user.setRole("STUDENT");
+        }
         
         userRepository.save(user);
 
