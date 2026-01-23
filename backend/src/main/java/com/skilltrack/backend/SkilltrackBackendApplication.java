@@ -17,40 +17,38 @@ public class SkilltrackBackendApplication {
 		SpringApplication.run(SkilltrackBackendApplication.class, args);
 	}
 
-    // 1️⃣ THE DOOR OPENER (CORS) - Allows Vercel to talk to Render
 	@Bean
 	public WebMvcConfigurer corsConfigurer() {
 		return new WebMvcConfigurer() {
 			@Override
 			public void addCorsMappings(CorsRegistry registry) {
 				registry.addMapping("/**")
-						.allowedOrigins("*") // Allow ALL websites (including Vercel)
+						.allowedOrigins("*")
 						.allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                         .allowedHeaders("*");
 			}
 		};
 	}
 
-    // 2️⃣ THE KEY MAKER (User Creator) - Creates your account automatically
 	@Bean
 	CommandLineRunner run(UserRepository userRepository, PasswordEncoder passwordEncoder) {
 		return args -> {
 			try {
-                // Check if user exists to avoid duplicates
-                if (userRepository.findByEmail("manager@test.com").isEmpty()) {
-                    User admin = new User();
-                    admin.setEmail("manager@test.com");
-                    admin.setName("Manager User");
-                    admin.setRole("ADMIN");
-                    admin.setPassword(passwordEncoder.encode("password"));
-                    
-                    userRepository.save(admin);
-                    System.out.println("✅ MANAGER USER CREATED SUCCESSFULLY!");
-                } else {
-                    System.out.println("⚠️ User already exists.");
-                }
+                // DELETE the user first to ensure a clean slate
+                userRepository.findByEmail("manager@test.com").ifPresent(userRepository::delete);
+                
+                // CREATE the user fresh
+				User admin = new User();
+				admin.setEmail("manager@test.com");
+				admin.setName("Manager User");
+				admin.setRole("ADMIN");
+                // ENCRYPT the password properly
+				admin.setPassword(passwordEncoder.encode("password"));
+				
+				userRepository.save(admin);
+				System.out.println("✅ PASSWORD RESET SUCCESSFUL! Login with: manager@test.com / password");
 			} catch (Exception e) {
-				System.out.println("⚠️ Error creating user: " + e.getMessage());
+				System.out.println("⚠️ Error: " + e.getMessage());
 			}
 		};
 	}
