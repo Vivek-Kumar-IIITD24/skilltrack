@@ -28,7 +28,7 @@ function Login() {
       // 3. ✅ Save everything to the browser for later use
       localStorage.setItem("token", token);
       localStorage.setItem("userId", userId); 
-      localStorage.setItem("role", role); // Optional: store role if needed elsewhere
+      localStorage.setItem("role", role); 
       
       console.log("Login Success! Role:", role); 
 
@@ -68,7 +68,7 @@ function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              placeholder="admin@test.com"
+              placeholder="manager@test.com"
               required
             />
           </div>
@@ -94,6 +94,18 @@ function Login() {
             {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
+
+        {/* ✅ ADDED: Sign Up Link */}
+        <p className="mt-4 text-center text-sm text-gray-600">
+          Don't have an account?{" "}
+          <span
+            className="cursor-pointer font-bold text-blue-600 hover:underline"
+            onClick={() => navigate("/register")}
+          >
+            Sign Up
+          </span>
+        </p>
+
       </div>
     </div>
   );
