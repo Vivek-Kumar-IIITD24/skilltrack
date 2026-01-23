@@ -3,150 +3,148 @@ import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 
 function Library() {
-  const [skills, setSkills] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All"); 
-  const [message, setMessage] = useState("");
+  const [allSkills, setAllSkills] = useState([]);
+  const [mySkillIds, setMySkillIds] = useState(new Set()); // Store IDs of enrolled skills
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const userId = localStorage.getItem("userId");
 
-  // 1. Fetch available skills
   useEffect(() => {
-    api.get("/skills")
-      .then((res) => setSkills(res.data))
-      .catch((err) => console.error("Error loading library:", err));
+    fetchLibraryData();
   }, []);
 
-  // 2. Generate dynamic unique categories list
-  const categories = ["All", ...new Set(skills.map(s => s.category || "General"))];
-
-  // 3. Handle enrollment
-  const enrollSkill = async (skillId) => {
-    const userId = localStorage.getItem("userId");
+  const fetchLibraryData = async () => {
     try {
-      await api.post("/user-skills/assign", {
-        userId: userId,
-        skillId: skillId,
-        progress: 0
-      });
-      setMessage("✅ Enrolled successfully! Check your Dashboard.");
-    } catch (error) {
-      setMessage("❌ Could not enroll. You might already have this skill.");
+      setLoading(true);
+      // 1. Get ALL available skills
+      const skillsRes = await api.get("/skills");
+      
+      // 2. Get the skills I have already enrolled in
+      // We use a try-catch here because if the user isn't logged in, this might fail, 
+      // but we still want to show the library.
+      let enrolledIds = new Set();
+      if (userId) {
+        try {
+          const mySkillsRes = await api.get("/user-skills/me");
+          // Extract just the skill IDs into a Set for fast lookup
+          enrolledIds = new Set(mySkillsRes.data.map(item => item.skillId));
+        } catch (e) {
+          console.log("Could not fetch user skills (maybe not logged in)");
+        }
+      }
+
+      setAllSkills(skillsRes.data);
+      setMySkillIds(enrolledIds);
+
+    } catch (err) {
+      console.error("Error fetching library:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 4. Combined Filter Logic
-  const filteredSkills = skills.filter((skill) => {
-    const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
-      skill.name.toLowerCase().includes(searchLower) ||
-      skill.description.toLowerCase().includes(searchLower);
-    
-    const matchesCategory = 
-      selectedCategory === "All" || (skill.category || "General") === selectedCategory;
+  const handleEnroll = async (skillId) => {
+    if (!userId) {
+      alert("Please log in to enroll!");
+      navigate("/");
+      return;
+    }
 
-    return matchesSearch && matchesCategory;
-  });
+    try {
+      await api.post("/user-skills/enroll", {
+        userId: userId, // technically backend gets this from token, but we send it to be safe
+        skillId: skillId
+      });
+      
+      alert("Enrolled successfully! Redirecting to Dashboard...");
+      navigate("/dashboard");
+    } catch (err) {
+      // If the backend says "Already enrolled", we catch it here too
+      alert(err.response?.data || "Enrollment failed");
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8 font-sans">
-      <div className="max-w-5xl mx-auto">
-        
-        {/* Header Section */}
-        <div className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-4xl font-extrabold text-gray-900">Skill Library</h1>
-            <p className="text-gray-500 mt-1">Explore and enroll in new learning paths</p>
+            <h1 className="text-3xl font-black text-gray-800 tracking-tight">Skill Library</h1>
+            <p className="text-gray-500 text-sm mt-1">Explore and enroll in new learning paths</p>
           </div>
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="px-5 py-2.5 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition-all shadow-sm font-semibold"
+          <button 
+            onClick={() => navigate("/dashboard")} 
+            className="bg-gray-800 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-gray-900 transition shadow-lg"
           >
             ← My Dashboard
           </button>
         </div>
 
-        {/* Search & Category Filter Bar */}
-        <div className="flex flex-col md:flex-row gap-4 mb-10">
-          <div className="relative flex-1">
-            <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
-              🔍
-            </span>
-            <input
-              type="text"
-              placeholder="Search by skill name or description..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 p-4 rounded-xl border border-gray-200 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all text-gray-700 bg-white"
-            />
-          </div>
-          
-          <div className="relative md:w-64">
-             <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full p-4 rounded-xl border border-gray-200 shadow-sm bg-white text-gray-700 font-bold outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer"
-            >
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
-              ▼
-            </div>
-          </div>
+        {/* Search Bar (Visual Only for now) */}
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-8 flex gap-4">
+          <input 
+            type="text" 
+            placeholder="Search by skill name or description..." 
+            className="flex-1 bg-transparent outline-none text-gray-700 font-medium ml-2"
+          />
         </div>
-        
-        {/* Notification Toast */}
-        {message && (
-          <div className={`p-4 mb-8 rounded-xl text-center font-bold animate-bounce border-2 ${
-            message.includes("✅") ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
-          }`}>
-            {message}
+
+        {loading ? (
+           <div className="text-center py-20">
+             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+             <p className="text-gray-500">Loading library...</p>
+           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {allSkills.map((skill) => {
+              const isEnrolled = mySkillIds.has(skill.id); // Check if enrolled
+
+              return (
+                <div key={skill.id} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 hover:shadow-xl transition-all group flex flex-col justify-between h-full">
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <h3 className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
+                        {skill.name}
+                      </h3>
+                      <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wide ${
+                        skill.level === 'Beginner' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'
+                      }`}>
+                        {skill.level}
+                      </span>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">
+                        {skill.category}
+                      </span>
+                    </div>
+
+                    <p className="text-gray-500 text-sm leading-relaxed mb-6 line-clamp-3">
+                      {skill.description}
+                    </p>
+                  </div>
+
+                  {/* ✅ SMART BUTTON LOGIC */}
+                  {isEnrolled ? (
+                    <button 
+                      onClick={() => navigate("/dashboard")}
+                      className="w-full bg-green-50 text-green-600 border border-green-200 py-3 rounded-xl font-bold hover:bg-green-100 transition flex items-center justify-center gap-2"
+                    >
+                      <span>✓</span> Continue Learning
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => handleEnroll(skill.id)}
+                      className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200"
+                    >
+                      Enroll Now
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
-
-        {/* Skills Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredSkills.length > 0 ? (
-            filteredSkills.map((skill) => (
-              <div key={skill.id} className="group bg-white p-7 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col justify-between overflow-hidden relative">
-                <div>
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-2xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">{skill.name}</h3>
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] uppercase font-black tracking-widest ${
-                      skill.level === 'Advanced' ? 'bg-red-100 text-red-700' : 
-                      skill.level === 'Intermediate' ? 'bg-yellow-100 text-yellow-700' : 
-                      'bg-green-100 text-green-700'
-                    }`}>
-                      {skill.level}
-                    </span>
-                  </div>
-                  
-                  <p className="text-blue-600 text-[11px] font-black uppercase tracking-widest mb-4 inline-block bg-blue-50 px-2 py-0.5 rounded">
-                    {skill.category || "General"}
-                  </p>
-                  
-                  <p className="text-gray-500 mb-8 text-sm leading-relaxed line-clamp-3">
-                    {skill.description}
-                  </p>
-                </div>
-                
-                <button 
-                  onClick={() => enrollSkill(skill.id)}
-                  className="w-full bg-blue-600 text-white py-3.5 rounded-xl hover:bg-blue-700 transition-all font-black uppercase tracking-wide shadow-lg shadow-blue-200 active:scale-95"
-                >
-                  Enroll Now
-                </button>
-              </div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-24 bg-white rounded-3xl border-2 border-dashed border-gray-200">
-              <p className="text-gray-400 text-xl font-medium">
-                No skills found in <span className="text-gray-600 font-bold">"{selectedCategory}"</span> matching your search.
-              </p>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

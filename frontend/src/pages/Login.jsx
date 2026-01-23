@@ -84,13 +84,13 @@ function Login() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 pr-10" // Added pr-10 for icon space
               required
             />
-            {/* ✅ Eye Icon Button */}
+            {/* ✅ Eye Icon for Login (FIXED LOGIC) */}
             <button
-              type="button"
-              className="absolute right-3 top-8 text-gray-500 hover:text-gray-700 focus:outline-none"
-              onClick={() => setShowPassword(!showPassword)}
+                type="button"
+                className="absolute right-3 top-8 text-gray-500 hover:text-gray-700 focus:outline-none"
+                onClick={() => setShowPassword(!showPassword)}
             >
-              {showPassword ? "🙈" : "👁️"}
+                {showPassword ? "👁️" : "🙈"} {/* Swapped: Open Eye now shows text */}
             </button>
           </div>
 
