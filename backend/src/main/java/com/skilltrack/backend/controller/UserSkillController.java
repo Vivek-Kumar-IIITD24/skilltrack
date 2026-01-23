@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/user-skills")
+@RequestMapping("/user-skills") // ✅ FIXED: Removed "/api" to match Frontend
 public class UserSkillController {
 
     private final UserSkillRepository userSkillRepository;
@@ -33,26 +33,31 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ FIXED: Using a DTO class prevents the "Integer vs Long" crash
+    // ✅ DTO to prevent JSON parsing errors
     public static class EnrollRequest {
         public Long skillId;
+        // We ignore userId from frontend because we get it securely from the Token
     }
 
     @PostMapping("/enroll")
     public ResponseEntity<?> enrollSelf(@RequestBody EnrollRequest request) {
+        // 1. Get Logged-in User from Token
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Long skillId = request.skillId;
 
+        // 2. Check duplicates
         if (userSkillRepository.existsByUserIdAndSkillId(user.getId(), skillId)) {
             return ResponseEntity.badRequest().body("You are already enrolled in this skill!");
         }
 
+        // 3. Find Skill
         Skill skill = skillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
 
+        // 4. Save Enrollment
         UserSkill enrollment = new UserSkill(user, skill);
         userSkillRepository.save(enrollment);
 
