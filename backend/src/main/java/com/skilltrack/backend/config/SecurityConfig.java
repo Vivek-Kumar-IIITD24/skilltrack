@@ -40,11 +40,9 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/skills/**").permitAll() // Publicly viewable skills
                 
-                // ✅ FIXED: Updated to "/skills" (Removed /api)
-                .requestMatchers("/skills").permitAll()
-
-                // ✅ PROACTIVE FIX: Updated to "/user-skills" (Removed /api)
+                // ✅ Fix: Allow Students (and Admins) to use User Skills
                 .requestMatchers("/user-skills/**").authenticated()
 
                 .anyRequest().authenticated()
@@ -57,7 +55,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173", "https://skilltrack-frontend.vercel.app")); 
+        
+        // ✅ CRITICAL FIX FOR MOBILE: Use AllowedOriginPatterns("*")
+        // This allows requests from Expo (Mobile), Localhost, and Vercel.
+        configuration.setAllowedOriginPatterns(List.of("*")); 
+        
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);

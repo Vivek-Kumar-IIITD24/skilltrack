@@ -1,15 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, Text, FlatList, ActivityIndicator, RefreshControl, Image } from 'react-native';
+import { StyleSheet, View, Text, FlatList, ActivityIndicator, RefreshControl, TouchableOpacity, Linking, Alert } from 'react-native';
 import { useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons'; // Built-in icons
 import api from '@/services/api';
 
-// Define what a Skill looks like
 interface Skill {
   skillId: number;
   skillName: string;
   description: string;
   progress: number;
   status: string;
+  // ✅ NEW: The app now knows about links
+  videoUrl?: string;
+  docsUrl?: string;
 }
 
 export default function DashboardScreen() {
@@ -17,7 +20,6 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Function to fetch data from Java Backend
   const fetchSkills = async () => {
     try {
       const response = await api.get('/user-skills/me');
@@ -30,7 +32,6 @@ export default function DashboardScreen() {
     }
   };
 
-  // Reload data whenever this screen comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchSkills();
@@ -40,6 +41,20 @@ export default function DashboardScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchSkills();
+  };
+
+  // ✅ Helper to open links safely
+  const openLink = async (url?: string) => {
+    if (!url) {
+      Alert.alert("No Link", "This resource hasn't been added yet.");
+      return;
+    }
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      await Linking.openURL(url);
+    } else {
+      Alert.alert("Error", "Cannot open this link: " + url);
+    }
   };
 
   const renderSkillCard = ({ item }: { item: Skill }) => (
@@ -63,12 +78,37 @@ export default function DashboardScreen() {
         {item.description}
       </Text>
 
+      {/* Progress Bar */}
       <View style={styles.progressContainer}>
         <View style={styles.progressBarBackground}>
           <View style={[styles.progressBarFill, { width: `${item.progress}%` }]} />
         </View>
         <Text style={styles.progressText}>{item.progress}%</Text>
       </View>
+
+      {/* ✅ NEW: Action Buttons (Only show if link exists) */}
+      <View style={styles.actionRow}>
+        {item.videoUrl ? (
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.videoButton]} 
+            onPress={() => openLink(item.videoUrl)}
+          >
+            <Ionicons name="play-circle" size={20} color="#fff" />
+            <Text style={styles.actionText}>Watch Class</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {item.docsUrl ? (
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.docsButton]} 
+            onPress={() => openLink(item.docsUrl)}
+          >
+            <Ionicons name="document-text" size={20} color="#fff" />
+            <Text style={styles.actionText}>Read Notes</Text>
+          </TouchableOpacity>
+        ) : null}
+      </View>
+
     </View>
   );
 
@@ -100,7 +140,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f7fa',
-    paddingTop: 60, // Space for status bar
+    paddingTop: 60,
     paddingHorizontal: 20,
   },
   headerTitle: {
@@ -110,7 +150,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 100, // Extra space for scrolling
   },
   card: {
     backgroundColor: '#fff',
@@ -153,6 +193,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    marginBottom: 20,
   },
   progressBarBackground: {
     flex: 1,
@@ -170,6 +211,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: '#2563eb',
+  },
+  // ✅ NEW Styles for Buttons
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    paddingTop: 15,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
+  },
+  videoButton: {
+    backgroundColor: '#ef4444', // YouTube Red
+  },
+  docsButton: {
+    backgroundColor: '#3b82f6', // Doc Blue
+  },
+  actionText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   emptyText: {
     textAlign: 'center',
