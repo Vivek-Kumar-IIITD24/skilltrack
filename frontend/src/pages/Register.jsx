@@ -1,26 +1,29 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react"; // Make sure you have this icon pack or use text
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("STUDENT"); // ✅ Default to Student
+  const [showPassword, setShowPassword] = useState(false); // ✅ Eye Toggle State
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      // Note: We use the same URL structure as Login
       const response = await fetch("https://skilltrack-backend-qlr5.onrender.com/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        // ✅ Send the selected ROLE to backend
+        body: JSON.stringify({ name, email, password, role }),
       });
 
       if (response.ok) {
         alert("Registration successful! Please log in.");
-        navigate("/"); // Redirect to Login page
+        navigate("/");
       } else {
         const message = await response.text();
         setError(message || "Registration failed");
@@ -34,7 +37,7 @@ const Register = () => {
     <div className="flex h-screen items-center justify-center bg-gray-100">
       <div className="w-96 rounded-lg bg-white p-8 shadow-lg">
         <h2 className="mb-6 text-center text-2xl font-bold text-blue-600">
-          Student Registration
+          Create Account
         </h2>
         
         {error && (
@@ -66,15 +69,37 @@ const Register = () => {
             />
           </div>
 
-          <div className="mb-6">
+          <div className="mb-4 relative">
             <label className="mb-1 block text-sm font-semibold text-gray-700">Password</label>
             <input
-              type="password"
-              className="w-full rounded border p-2 focus:border-blue-500 focus:outline-none"
+              // ✅ Toggle between "text" and "password"
+              type={showPassword ? "text" : "password"}
+              className="w-full rounded border p-2 pr-10 focus:border-blue-500 focus:outline-none"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            {/* ✅ Eye Icon Button */}
+            <button
+              type="button"
+              className="absolute right-2 top-8 text-gray-500 hover:text-gray-700"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? "🙈" : "👁️"} 
+            </button>
+          </div>
+
+          {/* ✅ Role Selection Dropdown */}
+          <div className="mb-6">
+            <label className="mb-1 block text-sm font-semibold text-gray-700">I am a...</label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full rounded border p-2 focus:border-blue-500 focus:outline-none bg-white"
+            >
+              <option value="STUDENT">Student</option>
+              <option value="ADMIN">Instructor / Admin</option>
+            </select>
           </div>
 
           <button

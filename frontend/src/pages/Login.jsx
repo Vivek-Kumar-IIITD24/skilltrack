@@ -5,6 +5,7 @@ import api from "../services/api";
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // ✅ Added state for Eye Icon
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   
@@ -73,15 +74,24 @@ function Login() {
             />
           </div>
 
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium text-gray-700">Password</label>
             <input
-              type="password"
+              // ✅ Toggle between "text" and "password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 pr-10" // Added pr-10 for icon space
               required
             />
+            {/* ✅ Eye Icon Button */}
+            <button
+              type="button"
+              className="absolute right-3 top-8 text-gray-500 hover:text-gray-700 focus:outline-none"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? "🙈" : "👁️"}
+            </button>
           </div>
 
           <button
@@ -95,7 +105,7 @@ function Login() {
           </button>
         </form>
 
-        {/* ✅ ADDED: Sign Up Link */}
+        {/* ✅ Sign Up Link */}
         <p className="mt-4 text-center text-sm text-gray-600">
           Don't have an account?{" "}
           <span
