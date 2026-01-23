@@ -39,16 +39,14 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
-                // 1. ✅ FIXED: Updated to match your new Controller URL ("/auth")
                 .requestMatchers("/auth/**").permitAll()
                 
-                // 2. Allow everyone to SEE the Library
-                .requestMatchers("/api/skills").permitAll()
+                // ✅ FIXED: Updated to "/skills" (Removed /api)
+                .requestMatchers("/skills").permitAll()
 
-                // 3. Allow logged-in users to use user-skills
-                .requestMatchers("/api/user-skills/**").authenticated()
+                // ✅ PROACTIVE FIX: Updated to "/user-skills" (Removed /api)
+                .requestMatchers("/user-skills/**").authenticated()
 
-                // 4. Everything else requires login
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
@@ -56,11 +54,9 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ FIXED: CORS Configuration for Vercel AND Localhost
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Added your Vercel app here so the cloud connection works!
         configuration.setAllowedOrigins(List.of("http://localhost:5173", "https://skilltrack-frontend.vercel.app")); 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));

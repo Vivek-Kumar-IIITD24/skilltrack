@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/skills")
+@RequestMapping("/skills") // ✅ FIXED: Removed "/api" to match Frontend
 public class SkillController {
 
     private final SkillRepository skillRepository;
@@ -18,7 +18,7 @@ public class SkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ CREATE SKILL
+    // CREATE SKILL
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
     public ResponseEntity<?> addSkill(@RequestBody Skill skill) {
@@ -35,13 +35,13 @@ public class SkillController {
         return ResponseEntity.ok(savedSkill);
     }
 
-    // ✅ GET ALL SKILLS
+    // GET ALL SKILLS
     @GetMapping
     public List<Skill> getAllSkills() {
         return skillRepository.findAll();
     }
 
-    // ✅ UPDATED: Delete Skill with Error Handling
+    // DELETE SKILL
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteSkill(@PathVariable Long id) {
@@ -54,7 +54,6 @@ public class SkillController {
             return ResponseEntity.ok("Skill deleted successfully");
             
         } catch (Exception e) {
-            // This catches the error if students are already enrolled in the skill
             return ResponseEntity.status(500).body("Cannot delete skill: Students are currently enrolled in it.");
         }
     }
