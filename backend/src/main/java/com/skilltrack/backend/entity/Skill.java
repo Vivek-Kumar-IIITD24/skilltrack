@@ -1,7 +1,5 @@
 package com.skilltrack.backend.entity;
 
-import java.util.List;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -12,34 +10,30 @@ public class Skill {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
     private String name;
-
-    @Column(length = 255)
     private String description;
+    private String level; // e.g., Beginner, Intermediate
+    private String category; // e.g., Tech, Art, Music
 
-    @Column(nullable = false)
-    private String level = "Beginner";
+    // ✅ NEW: Content Links (The "Learning" part)
+    private String videoUrl; // YouTube, Vimeo, etc.
+    private String docsUrl;  // PDF, Google Doc, etc.
 
-    // ✅ NEW: Skill Category (e.g., Frontend, Backend, Data Science)
-    @Column(nullable = false)
-    private String category = "General";
-
-    @OneToMany(mappedBy = "skill", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonIgnore 
-    private List<UserSkill> userSkills;
-
+    // Constructors
     public Skill() {}
 
-    // Updated constructor to include level and category
-    public Skill(String name, String description, String level, String category) {
+    public Skill(String name, String description, String level, String category, String videoUrl, String docsUrl) {
         this.name = name;
         this.description = description;
         this.level = level;
         this.category = category;
+        this.videoUrl = videoUrl;
+        this.docsUrl = docsUrl;
     }
 
+    // Getters and Setters
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -50,10 +44,13 @@ public class Skill {
     public String getLevel() { return level; }
     public void setLevel(String level) { this.level = level; }
 
-    // ✅ NEW: Getter and Setter for Category
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
 
-    public List<UserSkill> getUserSkills() { return userSkills; }
-    public void setUserSkills(List<UserSkill> userSkills) { this.userSkills = userSkills; }
+    // ✅ NEW Getters/Setters for Links
+    public String getVideoUrl() { return videoUrl; }
+    public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
+
+    public String getDocsUrl() { return docsUrl; }
+    public void setDocsUrl(String docsUrl) { this.docsUrl = docsUrl; }
 }
