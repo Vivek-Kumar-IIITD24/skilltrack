@@ -33,33 +33,32 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ NEW: SELF-ENROLLMENT (Student clicks "Start Learning")
+    // ✅ FIXED: Using a DTO class prevents the "Integer vs Long" crash
+    public static class EnrollRequest {
+        public Long skillId;
+    }
+
     @PostMapping("/enroll")
-    public ResponseEntity<?> enrollSelf(@RequestBody Map<String, Long> payload) {
-        // 1. Get the logged-in user from the Token
+    public ResponseEntity<?> enrollSelf(@RequestBody EnrollRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Long skillId = payload.get("skillId");
+        Long skillId = request.skillId;
 
-        // 2. Check if already enrolled
         if (userSkillRepository.existsByUserIdAndSkillId(user.getId(), skillId)) {
             return ResponseEntity.badRequest().body("You are already enrolled in this skill!");
         }
 
-        // 3. Find the skill
         Skill skill = skillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
 
-        // 4. Save the enrollment
         UserSkill enrollment = new UserSkill(user, skill);
         userSkillRepository.save(enrollment);
 
         return ResponseEntity.ok("Enrolled successfully!");
     }
 
-    // ✅ GET MY SKILLS (What am I learning?)
     @GetMapping("/me")
     public List<UserSkillResponse> getMySkills() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -78,7 +77,6 @@ public class UserSkillController {
         )).collect(Collectors.toList());
     }
 
-    // ✅ LEADERBOARD (Who is winning?)
     @GetMapping("/leaderboard")
     public ResponseEntity<List<Map<String, Object>>> getLeaderboard() {
         List<User> students = userRepository.findAll().stream()
@@ -87,7 +85,6 @@ public class UserSkillController {
 
         List<Map<String, Object>> leaderboard = students.stream().map(student -> {
             List<UserSkill> skills = userSkillRepository.findByUserId(student.getId());
-            
             long completedCount = skills.stream().filter(us -> us.getProgress() >= 100).count();
             double avgProgress = skills.isEmpty() ? 0 : 
                 skills.stream().mapToInt(UserSkill::getProgress).average().orElse(0.0);
@@ -109,7 +106,6 @@ public class UserSkillController {
         return ResponseEntity.ok(leaderboard);
     }
 
-    // ✅ CERTIFICATE (Proof of completion)
     @GetMapping("/{skillId}/certificate")
     public ResponseEntity<?> getCertificate(@PathVariable Long skillId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -123,19 +119,16 @@ public class UserSkillController {
                     if (us.getProgress() < 100) {
                         return ResponseEntity.status(403).body("Verification failed: Progress is currently " + us.getProgress() + "%. You must reach 100%.");
                     }
-                    
                     Map<String, Object> certData = new HashMap<>();
                     certData.put("studentName", user.getName());
                     certData.put("skillName", us.getSkill().getName());
                     certData.put("completionDate", LocalDate.now().toString());
                     certData.put("certificateId", "CERT-" + us.getId() + "-" + user.getId());
-                    
                     return ResponseEntity.ok(certData);
                 })
                 .orElse(ResponseEntity.status(404).body("Skill record not found for this user"));
     }
 
-    // ✅ STUDENT STATS (Dashboard numbers)
     @GetMapping("/stats")
     public ResponseEntity<?> getStudentStats() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -147,7 +140,6 @@ public class UserSkillController {
         int totalEnrolled = userSkills.size();
         long completed = userSkills.stream().filter(us -> us.getProgress() >= 100).count();
         long inProgress = userSkills.stream().filter(us -> us.getProgress() > 0 && us.getProgress() < 100).count();
-        
         double avgProgress = userSkills.isEmpty() ? 0 : 
             userSkills.stream().mapToInt(UserSkill::getProgress).average().orElse(0.0);
 
@@ -175,7 +167,6 @@ public class UserSkillController {
         )).collect(Collectors.toList());
     }
 
-    // ✅ UPDATE PROGRESS (Moving the bar)
     @PutMapping("/update")
     public ResponseEntity<?> updateProgress(@RequestBody UserSkillRequest request) {
         return userSkillRepository.findByUserId(request.getUserId()).stream()
@@ -183,7 +174,6 @@ public class UserSkillController {
                 .findFirst()
                 .map(userSkill -> {
                     userSkill.setProgress(request.getProgress());
-                    
                     if (request.getProgress() >= 100) {
                         userSkill.setStatus("COMPLETED");
                     } else if (request.getProgress() > 0) {
@@ -191,7 +181,6 @@ public class UserSkillController {
                     } else {
                         userSkill.setStatus("ENROLLED");
                     }
-
                     userSkillRepository.save(userSkill);
                     return ResponseEntity.ok("Progress updated");
                 })
