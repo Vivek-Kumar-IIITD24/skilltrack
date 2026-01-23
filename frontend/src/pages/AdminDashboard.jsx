@@ -5,10 +5,15 @@ import api from "../services/api";
 function AdminDashboard() {
   const [skills, setSkills] = useState([]);
   const [analytics, setAnalytics] = useState([]);
+  
+  // Form State
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [level, setLevel] = useState("Beginner");
-  const [category, setCategory] = useState("General"); // ✅ NEW: Category state
+  const [category, setCategory] = useState("General");
+  const [videoUrl, setVideoUrl] = useState(""); // ✅ NEW: YouTube Link
+  const [docsUrl, setDocsUrl] = useState("");   // ✅ NEW: PDF Link
+
   const [message, setMessage] = useState("");
   const navigate = useNavigate();
 
@@ -34,13 +39,26 @@ function AdminDashboard() {
   const handleAddSkill = async (e) => {
     e.preventDefault();
     try {
-      // ✅ Now sending 'category' to the backend
-      await api.post("/skills", { name, description, level, category });
+      // ✅ Sending the new Links to the Backend
+      await api.post("/skills", { 
+        name, 
+        description, 
+        level, 
+        category,
+        videoUrl, // "https://youtube.com/..."
+        docsUrl   // "https://drive.google.com/..."
+      });
+
       setMessage("✅ Skill added successfully!");
+      
+      // Reset Form
       setName(""); 
       setDescription(""); 
       setLevel("Beginner");
       setCategory("General");
+      setVideoUrl("");
+      setDocsUrl("");
+      
       fetchSkills();
     } catch (error) { 
       setMessage("❌ Failed to add skill. Ensure name is unique."); 
@@ -69,6 +87,8 @@ function AdminDashboard() {
           {message && <div className="p-3 mb-4 rounded bg-gray-700 text-center font-bold">{message}</div>}
           
           <form onSubmit={handleAddSkill} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            
+            {/* Row 1: Basic Info */}
             <input
               type="text" placeholder="Skill Name" value={name}
               onChange={(e) => setName(e.target.value)}
@@ -84,7 +104,6 @@ function AdminDashboard() {
               <option value="Advanced">Advanced</option>
             </select>
 
-            {/* ✅ NEW: Category Input Field */}
             <input
               type="text" placeholder="Category (e.g. Frontend)" value={category}
               onChange={(e) => setCategory(e.target.value)}
@@ -95,6 +114,19 @@ function AdminDashboard() {
               type="text" placeholder="Description" value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="p-3 rounded-lg bg-gray-700 border border-gray-600 focus:border-blue-500 outline-none" required
+            />
+
+            {/* Row 2: ✅ NEW Content Links */}
+            <input
+              type="text" placeholder="📺 YouTube Video URL" value={videoUrl}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              className="col-span-2 p-3 rounded-lg bg-gray-700 border border-gray-600 focus:border-red-500 outline-none" 
+            />
+
+            <input
+              type="text" placeholder="📄 Notes / PDF URL" value={docsUrl}
+              onChange={(e) => setDocsUrl(e.target.value)}
+              className="col-span-2 p-3 rounded-lg bg-gray-700 border border-gray-600 focus:border-green-500 outline-none" 
             />
 
             <button type="submit" className="lg:col-span-4 bg-blue-600 py-3 rounded-lg font-black uppercase hover:bg-blue-500 transition shadow-lg">
@@ -112,7 +144,7 @@ function AdminDashboard() {
             <thead className="bg-gray-700 text-gray-300 uppercase text-xs font-bold">
               <tr>
                 <th className="p-4">Skill Name</th>
-                <th className="p-4">Category</th> {/* ✅ NEW Column */}
+                <th className="p-4">Content</th> {/* ✅ NEW Column */}
                 <th className="p-4">Level</th>
                 <th className="p-4">Description</th>
               </tr>
@@ -121,7 +153,13 @@ function AdminDashboard() {
               {skills.map((skill) => (
                 <tr key={skill.id} className="hover:bg-gray-750 transition">
                   <td className="p-4 font-bold text-white">{skill.name}</td>
-                  <td className="p-4 text-blue-300 font-medium">{skill.category || "General"}</td>
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      {skill.videoUrl && <span title="Has Video">📺</span>}
+                      {skill.docsUrl && <span title="Has Notes">📄</span>}
+                      {!skill.videoUrl && !skill.docsUrl && <span className="text-gray-600">-</span>}
+                    </div>
+                  </td>
                   <td className="p-4">
                     <span className="px-2 py-1 rounded text-[10px] font-black bg-gray-900 border border-gray-600 uppercase">
                       {skill.level}
