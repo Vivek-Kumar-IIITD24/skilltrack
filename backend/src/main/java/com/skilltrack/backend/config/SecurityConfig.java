@@ -39,14 +39,13 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
-                // 1. Allow everyone to Login/Register
-                .requestMatchers("/api/auth/**").permitAll()
+                // 1. ✅ FIXED: Updated to match your new Controller URL ("/auth")
+                .requestMatchers("/auth/**").permitAll()
                 
-                // 2. Allow everyone to SEE the Library (Get all skills)
+                // 2. Allow everyone to SEE the Library
                 .requestMatchers("/api/skills").permitAll()
 
-                // 3. ✅ THE FIX: Allow ANY logged-in user (Student or Admin) to use user-skills
-                // (Previously this was .hasRole("ADMIN"), which blocked your Student)
+                // 3. Allow logged-in users to use user-skills
                 .requestMatchers("/api/user-skills/**").authenticated()
 
                 // 4. Everything else requires login
@@ -57,11 +56,12 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ CORS Configuration for React (Port 5173)
+    // ✅ FIXED: CORS Configuration for Vercel AND Localhost
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:5173")); 
+        // Added your Vercel app here so the cloud connection works!
+        configuration.setAllowedOrigins(List.of("http://localhost:5173", "https://skilltrack-frontend.vercel.app")); 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
