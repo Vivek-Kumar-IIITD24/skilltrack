@@ -1,9 +1,11 @@
 package com.skilltrack.backend.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,40 +13,57 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.skilltrack.backend.dto.LoginRequest;
 import com.skilltrack.backend.dto.LoginResponse;
+import com.skilltrack.backend.dto.RegisterRequest;
 import com.skilltrack.backend.entity.User;
 import com.skilltrack.backend.repository.UserRepository;
 import com.skilltrack.backend.security.JwtService;
 
 @RestController
-@RequestMapping("/auth") // ✅ FIXED: Removed "/api" to match your Frontend
+@RequestMapping("/auth")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder; // ✅ Added Password Encoder
 
-    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService, UserRepository userRepository) {
+    public AuthController(AuthenticationManager authenticationManager, JwtService jwtService, UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    // ✅ NEW REGISTER ENDPOINT
+    @PostMapping("/register")
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            return ResponseEntity.badRequest().body("Email already exists");
+        }
+
+        User user = new User();
+        user.setName(request.getName());
+        user.setEmail(request.getEmail());
+        // Default all new registrations to "STUDENT"
+        user.setRole("STUDENT");
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        
+        userRepository.save(user);
+
+        return ResponseEntity.ok("User registered successfully");
     }
 
     @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest request) {
-        // 1. Authenticate
         Authentication authentication = authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
         if (authentication.isAuthenticated()) {
-            // 2. Get User
             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-            // 3. Generate Token
             String token = jwtService.generateToken(user.getEmail(), user.getRole());
-            
-            // 4. Return Response
             return new LoginResponse(token, user.getId(), user.getRole());
         } else {
             throw new RuntimeException("Invalid Login Credentials");
