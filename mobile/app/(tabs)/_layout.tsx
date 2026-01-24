@@ -1,33 +1,51 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons'; // ✅ Fixed: Imported Ionicons
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: '#2563eb', // Active (Blue)
+        tabBarInactiveTintColor: '#94a3b8', // Inactive (Gray)
         headerShown: false,
-        tabBarButton: HapticTab,
       }}>
+      
+      {/* Tab 1: Login (Hidden from menu) */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Login',
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="log-in" color={color} />,
+          href: null, 
+          tabBarStyle: { display: 'none' },
         }}
       />
+
+      {/* Tab 2: Dashboard */}
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'My Path',
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="rocket" color={color} />,
+        }}
+      />
+
+      {/* Tab 3: Catalog (Restored) */}
+      <Tabs.Screen
+        name="catalog"
+        options={{
+          title: 'Catalog',
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="search" color={color} />,
+        }}
+      />
+
+      {/* Tab 4: Profile (New) */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="person" color={color} />,
         }}
       />
     </Tabs>
