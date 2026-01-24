@@ -1,80 +1,51 @@
 package com.skilltrack.backend.security;
 
-import java.io.IOException;
-import java.util.List;
-
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
-import com.skilltrack.backend.repository.UserRepository;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserRepository userRepository;
+    private final UserDetailsService userDetailsService;
 
-    public JwtAuthFilter(JwtService jwtService, UserRepository userRepository) {
+    public JwtAuthFilter(JwtService jwtService, UserDetailsService userDetailsService) {
         this.jwtService = jwtService;
-        this.userRepository = userRepository;
+        this.userDetailsService = userDetailsService;
     }
 
     @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String authHeader = request.getHeader("Authorization");
+        String token = null;
+        String username = null;
 
-        String header = request.getHeader("Authorization");
-
-        if (header == null || !header.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+            username = jwtService.extractUsername(token);
         }
 
-        String token = header.substring(7);
-
-        try {
-            String email = jwtService.extractUsername(token);
-            String role = jwtService.extractRole(token);
-
-            if (email != null &&
-                SecurityContextHolder.getContext().getAuthentication() == null &&
-                jwtService.isTokenValid(token)) {
-
-                if (userRepository.findByEmail(email).isPresent()) {
-
-                    // --- DEBUGGING LOGS (Check your VS Code Terminal for these!) ---
-                    System.out.println("DEBUG: Role extracted from Token: '" + role + "'");
-                    System.out.println("DEBUG: Final Authority being set: 'ROLE_" + role + "'");
-                    // -------------------------------------------------------------
-
-                    SimpleGrantedAuthority authority =
-                            new SimpleGrantedAuthority("ROLE_" + role);
-
-                    UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(
-                                    email,
-                                    null,
-                                    List.of(authority)
-                            );
-
-                    SecurityContextHolder.getContext().setAuthentication(auth);
-                }
+        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            // ✅ Load user from DB to ensure Role consistency
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            
+            if (jwtService.validateToken(token, userDetails.getUsername())) {
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
-        } catch (Exception e) {
-            System.out.println("DEBUG: Token validation error: " + e.getMessage());
         }
-
         filterChain.doFilter(request, response);
     }
 }

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.skilltrack.backend.dto.LoginRequest;
 import com.skilltrack.backend.dto.LoginResponse;
 import com.skilltrack.backend.dto.RegisterRequest;
+import com.skilltrack.backend.entity.Role; // ✅ Import Role Enum
 import com.skilltrack.backend.entity.User;
 import com.skilltrack.backend.repository.UserRepository;
 import com.skilltrack.backend.security.JwtService;
@@ -25,7 +26,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder; // ✅ Added Password Encoder
+    private final PasswordEncoder passwordEncoder;
 
     public AuthController(AuthenticationManager authenticationManager, JwtService jwtService, UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.authenticationManager = authenticationManager;
@@ -34,7 +35,6 @@ public class AuthController {
         this.passwordEncoder = passwordEncoder;
     }
 
-    // ✅ NEW REGISTER ENDPOINT
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -46,11 +46,11 @@ public class AuthController {
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         
-        // ✅ Use the role requested by the user, or default to STUDENT
-        if (request.getRole() != null && !request.getRole().isEmpty()) {
-            user.setRole(request.getRole().toUpperCase());
+        // ✅ FIXED: Use Role Enum instead of String
+        if (request.getRole() != null && request.getRole().equalsIgnoreCase("ADMIN")) {
+            user.setRole(Role.ADMIN);
         } else {
-            user.setRole("STUDENT");
+            user.setRole(Role.STUDENT);
         }
         
         userRepository.save(user);
@@ -68,8 +68,11 @@ public class AuthController {
             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-            String token = jwtService.generateToken(user.getEmail(), user.getRole());
-            return new LoginResponse(token, user.getId(), user.getRole());
+            // ✅ FIXED: Convert Enum to String for Token Generation
+            String token = jwtService.generateToken(user.getEmail(), user.getRole().name());
+            
+            // ✅ FIXED: Convert Enum to String for Response
+            return new LoginResponse(token, user.getId(), user.getRole().name());
         } else {
             throw new RuntimeException("Invalid Login Credentials");
         }

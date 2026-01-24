@@ -1,14 +1,13 @@
 package com.skilltrack.backend.repository;
 
+import com.skilltrack.backend.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import com.skilltrack.backend.entity.User;
-
 public interface UserRepository extends JpaRepository<User, Long> {
-
+    // Finds a user by email (used for login)
     Optional<User> findByEmail(String email);
-
+    
+    // Checks if email exists (used for signup)
     boolean existsByEmail(String email);
 }

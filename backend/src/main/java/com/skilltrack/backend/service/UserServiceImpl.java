@@ -2,6 +2,7 @@ package com.skilltrack.backend.service;
 
 import com.skilltrack.backend.dto.UserRequest;
 import com.skilltrack.backend.dto.UserResponse;
+import com.skilltrack.backend.entity.Role; // ✅ Import Role Enum
 import com.skilltrack.backend.entity.User;
 import com.skilltrack.backend.repository.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,8 +17,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UserServiceImpl(UserRepository userRepository,
-                           PasswordEncoder passwordEncoder) {
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
     }
@@ -32,8 +32,10 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword())); // ✅ FIX
-        user.setRole("USER");
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        
+        // ✅ FIXED: Set Role using Enum
+        user.setRole(Role.STUDENT); 
 
         User savedUser = userRepository.save(user);
 
@@ -41,7 +43,7 @@ public class UserServiceImpl implements UserService {
         response.setId(savedUser.getId());
         response.setName(savedUser.getName());
         response.setEmail(savedUser.getEmail());
-        response.setRole(savedUser.getRole());
+        response.setRole(savedUser.getRole().name()); // ✅ Convert Enum to String
 
         return response;
     }
@@ -55,7 +57,7 @@ public class UserServiceImpl implements UserService {
                     response.setId(user.getId());
                     response.setName(user.getName());
                     response.setEmail(user.getEmail());
-                    response.setRole(user.getRole());
+                    response.setRole(user.getRole().name()); // ✅ Convert Enum to String
                     return response;
                 })
                 .collect(Collectors.toList());

@@ -1,11 +1,15 @@
 package com.skilltrack.backend.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import java.util.Collection;
+import java.util.List;
 
 @Entity
 @Table(name = "users")
-public class User {
+public class User implements UserDetails { // <--- The "Badge"
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,62 +21,61 @@ public class User {
     @Column(unique = true, nullable = false, length = 150)
     private String email;
 
-    @JsonIgnore
-    @Column(nullable = false, length = 255)
+    @Column(nullable = false)
     private String password;
 
-    // ADMIN / STUDENT
-    @Column(nullable = false, length = 20)
-    private String role;
+    @Enumerated(EnumType.STRING) // Stores "STUDENT" or "ADMIN" as text in DB
+    private Role role;
 
     public User() {}
 
-    public User(String name, String email, String password, String role) {
+    public User(String name, String email, String password, Role role) {
         this.name = name;
         this.email = email;
         this.password = password;
         this.role = role;
     }
 
-    // ===== GETTERS =====
-    public Long getId() {
-        return id;
+    // --- SECURITY METHODS (Required by UserDetails) ---
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority(role.name()));
     }
 
-    public String getName() {
-        return name;
+    @Override
+    public String getUsername() {
+        return email; // We use email to login
     }
 
-    public String getEmail() {
-        return email;
-    }
-
+    @Override
     public String getPassword() {
         return password;
     }
 
-    public String getRole() {
-        return role;
-    }
+    @Override
+    public boolean isAccountNonExpired() { return true; }
 
-    // ===== SETTERS (REQUIRED) =====
-    public void setId(Long id) {
-        this.id = id;
-    }
+    @Override
+    public boolean isAccountNonLocked() { return true; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    @Override
+    public boolean isCredentialsNonExpired() { return true; }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
+    @Override
+    public boolean isEnabled() { return true; }
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+    // --- YOUR STANDARD GETTERS/SETTERS ---
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setRole(String role) {
-        this.role = role;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public void setPassword(String password) { this.password = password; }
+
+    public Role getRole() { return role; }
+    public void setRole(Role role) { this.role = role; }
 }

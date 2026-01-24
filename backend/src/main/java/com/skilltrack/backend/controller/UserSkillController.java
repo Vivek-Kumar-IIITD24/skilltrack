@@ -2,6 +2,7 @@ package com.skilltrack.backend.controller;
 
 import com.skilltrack.backend.dto.UserSkillRequest;
 import com.skilltrack.backend.dto.UserSkillResponse;
+import com.skilltrack.backend.entity.Role; // ✅ Import Role Enum
 import com.skilltrack.backend.entity.User;
 import com.skilltrack.backend.entity.UserSkill;
 import com.skilltrack.backend.entity.Skill;
@@ -37,8 +38,6 @@ public class UserSkillController {
         public Long skillId;
     }
 
-    // ✅ FIXED: Changed from "/enroll" to "" (Empty)
-    // Mobile sends POST to "/user-skills", so this must match.
     @PostMapping
     public ResponseEntity<?> enrollSelf(@RequestBody EnrollRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -60,8 +59,6 @@ public class UserSkillController {
         return ResponseEntity.ok(Map.of("message", "Enrolled successfully!"));
     }
 
-    // ✅ FIXED: Now returns a MAP including 'videoUrl' and 'docsUrl'
-    // This allows the mobile app to show the "Watch" buttons.
     @GetMapping("/me")
     public List<Map<String, Object>> getMySkills() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -78,11 +75,8 @@ public class UserSkillController {
             map.put("description", us.getSkill().getDescription());
             map.put("progress", us.getProgress());
             map.put("status", us.getStatus());
-            
-            // ✅ CRITICAL: Sending the links to mobile
             map.put("videoUrl", us.getSkill().getVideoUrl() != null ? us.getSkill().getVideoUrl() : "");
             map.put("docsUrl", us.getSkill().getDocsUrl() != null ? us.getSkill().getDocsUrl() : "");
-            
             return map;
         }).collect(Collectors.toList());
     }
@@ -90,7 +84,8 @@ public class UserSkillController {
     @GetMapping("/leaderboard")
     public ResponseEntity<List<Map<String, Object>>> getLeaderboard() {
         List<User> students = userRepository.findAll().stream()
-                .filter(u -> "STUDENT".equalsIgnoreCase(u.getRole()))
+                // ✅ FIXED: Compare Enum to Enum
+                .filter(u -> u.getRole() == Role.STUDENT)
                 .collect(Collectors.toList());
 
         List<Map<String, Object>> leaderboard = students.stream().map(student -> {
@@ -179,7 +174,6 @@ public class UserSkillController {
 
     @PutMapping("/update")
     public ResponseEntity<?> updateProgress(@RequestBody UserSkillRequest request) {
-        // ✅ Security Fix: Use the logged-in user, not the ID from the request body
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email).orElseThrow();
 
