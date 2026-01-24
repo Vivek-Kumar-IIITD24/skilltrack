@@ -20,7 +20,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/user-skills") // ✅ FIXED: Removed "/api" to match Frontend
+@RequestMapping("/user-skills") 
 public class UserSkillController {
 
     private final UserSkillRepository userSkillRepository;
@@ -33,53 +33,58 @@ public class UserSkillController {
         this.skillRepository = skillRepository;
     }
 
-    // ✅ DTO to prevent JSON parsing errors
     public static class EnrollRequest {
         public Long skillId;
-        // We ignore userId from frontend because we get it securely from the Token
     }
 
-    @PostMapping("/enroll")
+    // ✅ FIXED: Changed from "/enroll" to "" (Empty)
+    // Mobile sends POST to "/user-skills", so this must match.
+    @PostMapping
     public ResponseEntity<?> enrollSelf(@RequestBody EnrollRequest request) {
-        // 1. Get Logged-in User from Token
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Long skillId = request.skillId;
 
-        // 2. Check duplicates
         if (userSkillRepository.existsByUserIdAndSkillId(user.getId(), skillId)) {
-            return ResponseEntity.badRequest().body("You are already enrolled in this skill!");
+            return ResponseEntity.status(409).body("You are already enrolled in this skill!");
         }
 
-        // 3. Find Skill
         Skill skill = skillRepository.findById(skillId)
                 .orElseThrow(() -> new RuntimeException("Skill not found"));
 
-        // 4. Save Enrollment
         UserSkill enrollment = new UserSkill(user, skill);
         userSkillRepository.save(enrollment);
 
-        return ResponseEntity.ok("Enrolled successfully!");
+        return ResponseEntity.ok(Map.of("message", "Enrolled successfully!"));
     }
 
+    // ✅ FIXED: Now returns a MAP including 'videoUrl' and 'docsUrl'
+    // This allows the mobile app to show the "Watch" buttons.
     @GetMapping("/me")
-    public List<UserSkillResponse> getMySkills() {
+    public List<Map<String, Object>> getMySkills() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         List<UserSkill> skills = userSkillRepository.findByUserId(user.getId());
 
-        return skills.stream().map(us -> new UserSkillResponse(
-                user.getName(), 
-                us.getSkill().getId(), 
-                us.getSkill().getName(), 
-                us.getSkill().getDescription(),
-                us.getProgress(),
-                us.getStatus()
-        )).collect(Collectors.toList());
+        return skills.stream().map(us -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("userName", user.getName());
+            map.put("skillId", us.getSkill().getId());
+            map.put("skillName", us.getSkill().getName());
+            map.put("description", us.getSkill().getDescription());
+            map.put("progress", us.getProgress());
+            map.put("status", us.getStatus());
+            
+            // ✅ CRITICAL: Sending the links to mobile
+            map.put("videoUrl", us.getSkill().getVideoUrl() != null ? us.getSkill().getVideoUrl() : "");
+            map.put("docsUrl", us.getSkill().getDocsUrl() != null ? us.getSkill().getDocsUrl() : "");
+            
+            return map;
+        }).collect(Collectors.toList());
     }
 
     @GetMapping("/leaderboard")
@@ -174,7 +179,11 @@ public class UserSkillController {
 
     @PutMapping("/update")
     public ResponseEntity<?> updateProgress(@RequestBody UserSkillRequest request) {
-        return userSkillRepository.findByUserId(request.getUserId()).stream()
+        // ✅ Security Fix: Use the logged-in user, not the ID from the request body
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email).orElseThrow();
+
+        return userSkillRepository.findByUserId(user.getId()).stream()
                 .filter(us -> us.getSkill().getId().equals(request.getSkillId()))
                 .findFirst()
                 .map(userSkill -> {
