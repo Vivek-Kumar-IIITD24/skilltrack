@@ -1,6 +1,10 @@
 package com.skilltrack.backend.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "skills")
@@ -12,14 +16,13 @@ public class Skill {
 
     private String name;
     private String description;
-    private String level; // e.g., Beginner, Intermediate
-    private String category; // e.g., Tech, Art, Music
+    private String level; 
+    private String category;
 
-    // ✅ NEW: Content Links (The "Learning" part)
-    private String videoUrl; // YouTube, Vimeo, etc.
-    private String docsUrl;  // PDF, Google Doc, etc.
+    // ✅ Includes the new Link fields
+    private String videoUrl; 
+    private String docsUrl;
 
-    // Constructors
     public Skill() {}
 
     public Skill(String name, String description, String level, String category, String videoUrl, String docsUrl) {
@@ -47,7 +50,6 @@ public class Skill {
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
 
-    // ✅ NEW Getters/Setters for Links
     public String getVideoUrl() { return videoUrl; }
     public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
 
