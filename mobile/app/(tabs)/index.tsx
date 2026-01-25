@@ -3,8 +3,8 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ActivityInd
 import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router'; 
 
-// ✅ FIXED: Go up TWO levels to find 'services'
-import api from '../../services/api'; 
+// ✅ CORRECT IMPORT PATH
+import api from '../../services/api';
 
 export default function LoginScreen() {
   const router = useRouter(); 
