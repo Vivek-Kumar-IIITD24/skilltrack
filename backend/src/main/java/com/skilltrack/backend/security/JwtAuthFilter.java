@@ -33,13 +33,20 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             token = authHeader.substring(7);
-            username = jwtService.extractUsername(token);
+            try {
+                // ✅ FIX: Try to extract username, but catch error if token is invalid
+                username = jwtService.extractUsername(token);
+            } catch (Exception e) {
+                System.out.println("⚠️ Warning: Received invalid token. Ignoring it.");
+                // We do NOT throw an error here. We just let 'username' remain null.
+                // This allows the request to proceed to the Login endpoint safely.
+            }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            // ✅ Load user from DB to ensure Role consistency
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
             
+            // Validate token only if we successfully extracted a username
             if (jwtService.validateToken(token, userDetails.getUsername())) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
