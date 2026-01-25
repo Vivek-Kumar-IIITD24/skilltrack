@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import api from '@/services/api'; 
-import { router } from 'expo-router'; // ✅ Navigation Hook
+import { useRouter } from 'expo-router'; 
+
+// ✅ FIXED: Go up TWO levels to find 'services'
+import api from '../../services/api'; 
 
 export default function LoginScreen() {
+  const router = useRouter(); 
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,9 +21,13 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      console.log("Attempting login..."); 
+
       // 1. Call the Java Backend
       const response = await api.post('/auth/login', { email, password });
       
+      console.log("Login success:", response.data); 
+
       const { token, role, userId } = response.data;
 
       // 2. Save data to the Phone's Secure Vault
@@ -27,14 +35,14 @@ export default function LoginScreen() {
       await SecureStore.setItemAsync('role', role);
       await SecureStore.setItemAsync('userId', String(userId));
 
-      Alert.alert('Success', `Welcome back, Student! \nRole: ${role}`);
+      Alert.alert('Success', `Welcome back!`);
       
-      // ✅ 3. Navigate to Dashboard (The 'Explore' Tab)
-      router.replace('/explore');
+      // 3. Navigate to Dashboard
+      router.replace('/(tabs)/explore'); 
 
     } catch (error: any) {
-      console.error(error);
-      Alert.alert('Login Failed', 'Invalid email or password');
+      console.error("Login Error:", error);
+      Alert.alert('Login Failed', 'Check your email, password, or internet connection.');
     } finally {
       setLoading(false);
     }
@@ -50,7 +58,7 @@ export default function LoginScreen() {
           <Text style={styles.label}>Email</Text>
           <TextInput
             style={styles.input}
-            placeholder="student@test.com"
+            placeholder="manager@test.com"
             placeholderTextColor="#999"
             value={email}
             onChangeText={setEmail}
@@ -63,7 +71,7 @@ export default function LoginScreen() {
           <Text style={styles.label}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="********"
+            placeholder="password" 
             placeholderTextColor="#999"
             value={password}
             onChangeText={setPassword}
