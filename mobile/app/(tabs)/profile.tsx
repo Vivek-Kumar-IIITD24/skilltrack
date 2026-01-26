@@ -1,175 +1,222 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
-import api from '@/services/api';
-
-interface UserStats {
-  userName: string;
-  email: string;
-  totalEnrolled: number;
-  completed: number;
-  inProgress: number;
-  averageProgress: number;
-}
+import { Ionicons } from '@expo/vector-icons';
+import api from '../../services/api';
 
 export default function ProfileScreen() {
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const [userInfo, setUserInfo] = useState({ name: 'Loading...', email: '', role: '' });
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
 
-  const fetchStats = async () => {
+  const fetchProfile = async () => {
     try {
-      // Fetching the stats endpoint we made earlier
-      const response = await api.get('/user-skills/stats');
-      setStats(response.data);
+      const storedRole = await SecureStore.getItemAsync('role');
+      const response = await api.get('/user-skills/stats'); 
+      
+      setUserInfo({
+        name: response.data.userName,
+        email: response.data.email,
+        role: storedRole || 'STUDENT'
+      });
     } catch (error) {
-      console.error("Failed to fetch profile", error);
-      Alert.alert("Error", "Could not load profile data");
+      const storedRole = await SecureStore.getItemAsync('role');
+      setUserInfo(prev => ({ ...prev, role: storedRole || 'Guest' }));
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   };
 
   const handleLogout = async () => {
-    try {
-      // 1. Delete the token from storage
-      await SecureStore.deleteItemAsync('token');
-      // 2. Reset navigation to the Login screen
-      router.replace('/');
-    } catch (error) {
-      Alert.alert("Error", "Failed to logout");
-    }
+    await SecureStore.deleteItemAsync('token');
+    await SecureStore.deleteItemAsync('role');
+    router.replace('/');
   };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
-    );
-  }
+  const isManager = userInfo.role === 'ADMIN';
 
   return (
-    <View style={styles.container}>
-      {/* Header Section */}
+    <ScrollView 
+      style={styles.container}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchProfile(); }} tintColor="#10B981" />}
+    >
       <View style={styles.header}>
+        {/* ✅ UNIFIED AVATAR: Always Brand Green */}
         <View style={styles.avatarContainer}>
-           <Ionicons name="person" size={40} color="#fff" />
+          <Text style={styles.avatarText}>
+            {userInfo.name ? userInfo.name.charAt(0).toUpperCase() : '?'}
+          </Text>
         </View>
-        <Text style={styles.name}>{stats?.userName || "Student"}</Text>
-        <Text style={styles.email}>{stats?.email || "student@test.com"}</Text>
-      </View>
-
-      {/* Stats Grid */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats?.totalEnrolled || 0}</Text>
-          <Text style={styles.statLabel}>Enrolled</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats?.completed || 0}</Text>
-          <Text style={styles.statLabel}>Completed</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats?.averageProgress || 0}%</Text>
-          <Text style={styles.statLabel}>Avg Progress</Text>
+        
+        <Text style={styles.name}>{userInfo.name}</Text>
+        <Text style={styles.email}>{userInfo.email}</Text>
+        
+        {/* Role Badge: Distinguish via Label/Subtle Color */}
+        <View style={[styles.badge, isManager ? styles.adminBadge : styles.studentBadge]}>
+          <Text style={[styles.badgeText, isManager ? styles.adminBadgeText : styles.studentBadgeText]}>
+            {isManager ? "Manager Account" : "Student"}
+          </Text>
         </View>
       </View>
 
-      {/* Menu Options */}
-      <View style={styles.menu}>
-        <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert("Coming Soon", "Edit Profile feature coming in Part B!")}>
-          <Ionicons name="settings-outline" size={24} color="#334155" />
-          <Text style={styles.menuText}>Settings</Text>
-          <Ionicons name="chevron-forward" size={24} color="#cbd5e1" />
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        <TouchableOpacity style={styles.menuItem}>
+          <View style={styles.menuIcon}>
+            <Ionicons name="person-outline" size={20} color="#64748B" />
+          </View>
+          <Text style={styles.menuText}>Personal Details</Text>
+          <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert("Help", "Contact support@skilltrack.com")}>
-          <Ionicons name="help-circle-outline" size={24} color="#334155" />
-          <Text style={styles.menuText}>Help & Support</Text>
-          <Ionicons name="chevron-forward" size={24} color="#cbd5e1" />
-        </TouchableOpacity>
-
-        {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#ef4444" />
-          <Text style={styles.logoutText}>Logout</Text>
+        <TouchableOpacity style={styles.menuItem}>
+          <View style={styles.menuIcon}>
+            <Ionicons name="notifications-outline" size={20} color="#64748B" />
+          </View>
+          <Text style={styles.menuText}>Notifications</Text>
+          <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
         </TouchableOpacity>
       </View>
-    </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Support</Text>
+        <TouchableOpacity style={styles.menuItem}>
+          <View style={styles.menuIcon}>
+            <Ionicons name="help-circle-outline" size={20} color="#64748B" />
+          </View>
+          <Text style={styles.menuText}>Help Center</Text>
+          <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutText}>Log Out</Text>
+      </TouchableOpacity>
+
+      <Text style={styles.version}>Outcomely v1.0 • Phase 2</Text>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f7fa' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
-    backgroundColor: '#2563eb',
-    paddingTop: 80,
-    paddingBottom: 40,
-    alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
+  header: {
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    paddingVertical: 40,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  // ✅ Fixed Avatar: Uses Brand Green (#10B981)
   avatarContainer: {
     width: 80,
     height: 80,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 40,
+    backgroundColor: '#10B981', 
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
+    marginBottom: 16,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  name: { fontSize: 22, fontWeight: 'bold', color: '#fff' },
-  email: { fontSize: 14, color: '#dbeafe', marginTop: 4 },
-  
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: -30, // Pull up to overlap header
+  avatarText: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
   },
-  statCard: {
-    backgroundColor: '#fff',
-    width: '30%',
-    paddingVertical: 15,
-    borderRadius: 15,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  name: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginBottom: 4,
   },
-  statNumber: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-  statLabel: { fontSize: 12, color: '#64748b', marginTop: 4 },
-
-  menu: { marginTop: 30, paddingHorizontal: 20 },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
+  email: {
+    fontSize: 14,
+    color: '#64748B',
     marginBottom: 12,
   },
-  menuText: { flex: 1, marginLeft: 16, fontSize: 16, color: '#334155' },
+  badge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  // Badge Styles
+  studentBadge: { backgroundColor: '#ECFDF5' }, // Light Green
+  adminBadge: { backgroundColor: '#F1F5F9' },   // Light Grey (Neutral Professional)
   
-  logoutButton: {
+  badgeText: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' },
+  studentBadgeText: { color: '#10B981' },
+  adminBadgeText: { color: '#64748B' },
+  
+  section: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+  },
+  menuItem: {
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fee2e2',
     padding: 16,
     borderRadius: 12,
-    marginTop: 20,
-    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  logoutText: { marginLeft: 8, fontSize: 16, fontWeight: 'bold', color: '#ef4444' },
+  menuIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  menuText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#334155',
+    fontWeight: '500',
+  },
+  logoutButton: {
+    marginHorizontal: 24,
+    marginTop: 40,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+  },
+  logoutText: {
+    color: '#EF4444',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  version: {
+    textAlign: 'center',
+    color: '#CBD5E1',
+    marginTop: 24,
+    marginBottom: 40,
+    fontSize: 12,
+  },
 });

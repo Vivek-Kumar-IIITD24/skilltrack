@@ -1,86 +1,158 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, FlatList, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import api from '@/services/api';
-import { router } from 'expo-router';
-
-interface Skill {
-  id: number;
-  name: string;
-  description: string;
-  level: string;
-  category: string;
-}
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
+import { Ionicons } from '@expo/vector-icons';
+import api from '../../services/api';
 
 export default function CatalogScreen() {
-  const [skills, setSkills] = useState<Skill[]>([]);
+  const router = useRouter();
+  const [skills, setSkills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  // 1. Fetch All Available Skills
-  const fetchCatalog = async () => {
+  useFocusEffect(
+    useCallback(() => {
+      checkRole();
+      fetchSkills();
+    }, [])
+  );
+
+  const checkRole = async () => {
+    const role = await SecureStore.getItemAsync('role');
+    setUserRole(role);
+  };
+
+  const fetchSkills = async () => {
     try {
       const response = await api.get('/skills');
       setSkills(response.data);
     } catch (error) {
-      console.error("Failed to fetch catalog", error);
+      console.error(error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    fetchCatalog();
-  }, []);
+  // ✅ NEW: Delete Functionality
+  const handleDeleteConfirm = (id: number, name: string) => {
+    Alert.alert(
+        "Delete Course",
+        `Are you sure you want to permanently delete "${name}"? This cannot be undone.`,
+        [
+            { text: "Cancel", style: "cancel" },
+            { text: "Delete", style: "destructive", onPress: () => deleteCourse(id) }
+        ]
+    );
+  };
 
-  // 2. Handle Enrollment (Debug Version)
-  const handleEnroll = async (skillId: number) => {
+  const deleteCourse = async (id: number) => {
+      try {
+          setLoading(true);
+          await api.delete(`/skills/${id}`);
+          Alert.alert("Success", "Course deleted successfully.");
+          fetchSkills(); // Refresh list
+      } catch (error: any) {
+          Alert.alert("Error", error.response?.data || "Could not delete course.");
+      } finally {
+          setLoading(false);
+      }
+  };
+
+
+  const handleEnroll = async (skillId: number, skillName: string) => {
+    if (userRole === 'ADMIN') {
+      router.push({ 
+        pathname: '/lesson', 
+        params: { skillId: skillId.toString(), title: skillName } 
+      });
+      return;
+    }
+
     try {
-      console.log(`Attempting to enroll in skill ID: ${skillId}`);
       await api.post('/user-skills', { skillId });
-      
-      Alert.alert("Success", "You have enrolled! Go to your Dashboard to start learning.", [
-        { text: "Go to Dashboard", onPress: () => router.replace('/explore') }
+      Alert.alert("Enrolled!", "This course has been added to your learning path.", [
+        { text: "Go to Dashboard", onPress: () => router.push('/(tabs)/explore' as any) }
       ]);
     } catch (error: any) {
-      console.error("Enrollment Error Details:", error.response?.data || error.message);
-      
-      // Handle "Already Enrolled" gracefully
-      if (error.response?.status === 409 || error.response?.data?.message?.includes("already")) {
-         Alert.alert("Notice", "You are already enrolled in this skill.");
+      const message = error.response?.data || "Enrollment failed.";
+      if (typeof message === 'string' && message.includes("already enrolled")) {
+         router.push('/(tabs)/explore' as any);
       } else {
-         Alert.alert("Error", `Failed to enroll. Status: ${error.response?.status}`);
+         Alert.alert("Note", "You are likely already enrolled.");
       }
     }
   };
 
-  const renderSkillCard = ({ item }: { item: Skill }) => (
+  const renderSkillItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <View>
+      <View style={styles.cardHeader}>
+        <View style={{flex: 1}}>
           <Text style={styles.skillName}>{item.name}</Text>
-          <Text style={styles.category}>{item.category} • {item.level}</Text>
+          <Text style={styles.skillCategory}>{item.category} • {item.level}</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.enrollButton} 
-          onPress={() => handleEnroll(item.id)}
-        >
-          <Text style={styles.enrollText}>Enroll</Text>
-        </TouchableOpacity>
+        <View style={styles.iconCircle}>
+           <Ionicons name="school-outline" size={20} color="#10B981" />
+        </View>
       </View>
-      <Text style={styles.description}>{item.description}</Text>
+      
+      <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
+      
+      <View style={styles.cardFooter}>
+        <View style={styles.metaContainer}>
+           <Ionicons name="time-outline" size={14} color="#64748B" />
+           {/* Show lesson count if available */}
+           <Text style={styles.metaText}>{item.lessons ? `${item.lessons.length} Lessons` : 'Self-Paced'}</Text>
+        </View>
+
+        <View style={styles.actionsContainer}>
+            {/* ✅ DELETE BUTTON (Admin Only) */}
+            {userRole === 'ADMIN' && (
+                <TouchableOpacity 
+                    style={styles.deleteButton} 
+                    onPress={() => handleDeleteConfirm(item.id, item.name)}
+                >
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                </TouchableOpacity>
+            )}
+
+            <TouchableOpacity 
+            style={[
+                styles.actionButton, 
+                userRole === 'ADMIN' ? styles.adminButton : styles.enrollButton
+            ]} 
+            onPress={() => handleEnroll(item.id, item.name)}
+            >
+            <Text style={[
+                styles.buttonText,
+                userRole === 'ADMIN' ? styles.adminButtonText : styles.enrollButtonText
+            ]}>
+                {userRole === 'ADMIN' ? "Preview" : "Enroll"}
+            </Text>
+            </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.headerTitle}>Course Catalog</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Course Catalog</Text>
+        <Text style={styles.headerSubtitle}>Manage and browse courses.</Text>
+      </View>
+
       {loading ? (
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={skills}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={renderSkillCard}
-          contentContainerStyle={styles.list}
+          renderItem={renderSkillItem}
+          contentContainerStyle={styles.listContainer}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchSkills(); }} tintColor="#10B981" />}
         />
       )}
     </View>
@@ -90,57 +162,123 @@ export default function CatalogScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f7fa',
-    paddingTop: 60,
-    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 50,
+  },
+  header: {
+    paddingHorizontal: 24,
+    marginBottom: 20,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '900',
-    color: '#1e293b',
-    marginBottom: 20,
+    fontWeight: 'bold',
+    color: '#0F172A',
   },
-  list: { paddingBottom: 100 },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  listContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    marginBottom: 16,
     padding: 16,
-    marginBottom: 12,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  headerRow: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   skillName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#334155',
+    color: '#0F172A',
+    marginBottom: 4,
+    maxWidth: 220,
   },
-  category: {
+  skillCategory: {
     fontSize: 12,
-    color: '#64748b',
-    marginTop: 2,
+    color: '#10B981', 
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
-  enrollButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-  },
-  enrollText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 12,
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ECFDF5',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   description: {
+    fontSize: 14,
+    color: '#64748B',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 12,
+  },
+  metaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginLeft: 4,
+  },
+  actionsContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+  },
+  deleteButton: {
+      padding: 8,
+      marginRight: 8,
+      backgroundColor: '#FEF2F2',
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: '#FEE2E2'
+  },
+  actionButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  enrollButton: {
+    backgroundColor: '#10B981',
+  },
+  adminButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#94A3B8',
+  },
+  buttonText: {
+    fontWeight: '600',
     fontSize: 13,
-    color: '#94a3b8',
-    lineHeight: 18,
+  },
+  enrollButtonText: {
+    color: '#FFFFFF',
+  },
+  adminButtonText: {
+    color: '#64748B',
   },
 });

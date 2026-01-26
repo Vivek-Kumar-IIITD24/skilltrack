@@ -1,8 +1,9 @@
 package com.skilltrack.backend;
 
-import com.skilltrack.backend.entity.Role; // ✅ Import Role Enum
+import com.skilltrack.backend.entity.Role;
 import com.skilltrack.backend.entity.User;
 import com.skilltrack.backend.repository.UserRepository;
+import com.skilltrack.backend.repository.UserSkillRepository; // ✅ Import this
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -31,21 +32,23 @@ public class SkilltrackBackendApplication {
         };
     }
 
+    // ✅ ADDED UserSkillRepository to arguments
     @Bean
-    CommandLineRunner run(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    CommandLineRunner run(UserRepository userRepository, UserSkillRepository userSkillRepository, PasswordEncoder passwordEncoder) {
         return args -> {
             try {
-                // Clean up old test user
-                userRepository.findByEmail("manager@test.com").ifPresent(userRepository::delete);
+                // ✅ SAFE CLEANUP: Delete enrollments BEFORE deleting the user
+                userRepository.findByEmail("manager@test.com").ifPresent(user -> {
+                    System.out.println("Cleaning up old Manager data...");
+                    userSkillRepository.deleteByUserId(user.getId()); // Delete enrollments
+                    userRepository.delete(user);                      // Then delete user
+                });
                 
                 // Create Admin User
                 User admin = new User();
                 admin.setEmail("manager@test.com");
                 admin.setName("Manager User");
-                
-                // ✅ FIXED: Use Role.ADMIN Enum
-                admin.setRole(Role.ADMIN); 
-                
+                admin.setRole(Role.ADMIN);
                 admin.setPassword(passwordEncoder.encode("password"));
                 
                 userRepository.save(admin);

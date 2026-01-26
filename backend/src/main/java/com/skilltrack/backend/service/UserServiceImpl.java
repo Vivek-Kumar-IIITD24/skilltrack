@@ -1,65 +1,63 @@
 package com.skilltrack.backend.service;
 
-import com.skilltrack.backend.dto.UserRequest;
-import com.skilltrack.backend.dto.UserResponse;
-import com.skilltrack.backend.entity.Role; // ✅ Import Role Enum
+import com.skilltrack.backend.entity.Role;
 import com.skilltrack.backend.entity.User;
 import com.skilltrack.backend.repository.UserRepository;
+import com.skilltrack.backend.repository.UserSkillRepository;
+import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    @Autowired
+    private UserRepository userRepository;
 
-    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-        this.userRepository = userRepository;
-        this.passwordEncoder = passwordEncoder;
-    }
+    @Autowired
+    private UserSkillRepository userSkillRepository; // ✅ ADD THIS
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Override
-    public UserResponse createUser(UserRequest request) {
-
-        if (userRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email already registered");
+    public User registerUser(User user) {
+        if (userRepository.findByEmail(user.getEmail()).isPresent()) {
+            throw new RuntimeException("Email already exists");
         }
 
-        User user = new User();
-        user.setName(request.getName());
-        user.setEmail(request.getEmail());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        
-        // ✅ FIXED: Set Role using Enum
-        user.setRole(Role.STUDENT); 
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        User savedUser = userRepository.save(user);
+        if (user.getRole() == null) {
+            user.setRole(Role.STUDENT);
+        }
 
-        UserResponse response = new UserResponse();
-        response.setId(savedUser.getId());
-        response.setName(savedUser.getName());
-        response.setEmail(savedUser.getEmail());
-        response.setRole(savedUser.getRole().name()); // ✅ Convert Enum to String
-
-        return response;
+        return userRepository.save(user);
     }
 
     @Override
-    public List<UserResponse> getAllUsers() {
-        return userRepository.findAll()
-                .stream()
-                .map(user -> {
-                    UserResponse response = new UserResponse();
-                    response.setId(user.getId());
-                    response.setName(user.getName());
-                    response.setEmail(user.getEmail());
-                    response.setRole(user.getRole().name()); // ✅ Convert Enum to String
-                    return response;
-                })
-                .collect(Collectors.toList());
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
+    }
+
+    @Override
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    // ✅ CRITICAL FIX: SAFE USER DELETE
+    @Override
+    @Transactional
+    public void deleteUser(Long userId) {
+
+        // 1️⃣ delete all skills linked to this user
+        userSkillRepository.deleteByUserId(userId);
+
+        // 2️⃣ now delete the user
+        userRepository.deleteById(userId);
     }
 }

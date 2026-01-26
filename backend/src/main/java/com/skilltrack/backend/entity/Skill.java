@@ -1,10 +1,8 @@
 package com.skilltrack.backend.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*; // Imports OneToMany, CascadeType, etc.
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "skills")
@@ -19,9 +17,15 @@ public class Skill {
     private String level; 
     private String category;
 
-    // ✅ Includes the new Link fields
+    // Existing Link fields
     private String videoUrl; 
     private String docsUrl;
+
+    // ✅ NEW: The list of lessons inside this Course/Skill
+    // "mappedBy" tells DB that 'skill' field in Lesson.java owns the relationship
+    // "cascade = ALL" means if we save/delete a Skill, it automatically saves/deletes its Lessons
+    @OneToMany(mappedBy = "skill", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Lesson> lessons = new ArrayList<>();
 
     public Skill() {}
 
@@ -32,6 +36,12 @@ public class Skill {
         this.category = category;
         this.videoUrl = videoUrl;
         this.docsUrl = docsUrl;
+    }
+
+    // ✅ NEW: Helper method to add a lesson and link it back to this skill
+    public void addLesson(Lesson lesson) {
+        lessons.add(lesson);
+        lesson.setSkill(this);
     }
 
     // Getters and Setters
@@ -55,4 +65,8 @@ public class Skill {
 
     public String getDocsUrl() { return docsUrl; }
     public void setDocsUrl(String docsUrl) { this.docsUrl = docsUrl; }
+
+    // ✅ NEW: Getter and Setter for lessons
+    public List<Lesson> getLessons() { return lessons; }
+    public void setLessons(List<Lesson> lessons) { this.lessons = lessons; }
 }

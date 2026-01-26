@@ -1,12 +1,17 @@
 package com.skilltrack.backend.service;
 
-import com.skilltrack.backend.dto.UserRequest;
-import com.skilltrack.backend.dto.UserResponse;
+import com.skilltrack.backend.entity.User;
 import java.util.List;
+import java.util.Optional;
 
 public interface UserService {
 
-    UserResponse createUser(UserRequest request);
+    User registerUser(User user);
 
-    List<UserResponse> getAllUsers();
+    Optional<User> findByEmail(String email);
+
+    List<User> getAllUsers();
+
+    // ✅ CRITICAL: add delete user method
+    void deleteUser(Long userId);
 }
