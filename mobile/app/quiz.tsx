@@ -19,21 +19,35 @@ export default function QuizScreen() {
     fetchQuiz();
   }, []);
 
+  // ✅ NEW: Auto-save progress when quiz is passed
+  useEffect(() => {
+    if (isQuizComplete) {
+      const percentage = (score / questions.length) * 100;
+      if (percentage >= 80) {
+        verifyLesson();
+      }
+    }
+  }, [isQuizComplete]);
+
+  const verifyLesson = async () => {
+    try {
+      console.log("🏆 Quiz Passed! Marking verified in database...");
+      await api.post(`/progress/${lessonId}/complete`);
+    } catch (error) {
+      console.error("Failed to verify lesson:", error);
+    }
+  };
+
   const fetchQuiz = async () => {
     try {
-      console.log("Fetching AI Quiz for Lesson:", lessonId);
       const response = await api.get(`/quiz/${lessonId}`);
-      
-      // ✅ SAFETY CHECK: Ensure we actually got questions
       if (response.data && response.data.length > 0) {
         setQuestions(response.data);
       } else {
-        Alert.alert("Notice", "AI could not generate a quiz for this specific video content.");
-        // We do NOT navigate back immediately here to avoid unmounting issues during state updates.
-        // The render logic below handles the empty state.
+        Alert.alert("Notice", "AI could not generate a quiz.");
+        router.back();
       }
     } catch (error) {
-      console.log("Quiz Error:", error);
       Alert.alert("Error", "Could not load quiz.");
       router.back();
     } finally {
@@ -44,13 +58,16 @@ export default function QuizScreen() {
   const handleAnswer = (option: string) => {
     setSelectedOption(option);
     
-    // Check Answer immediately
     const currentQ = questions[currentQIndex];
-    if (option === currentQ.correctAnswer) {
-      setScore(score + 1);
+    const isCorrect = option === currentQ.correctAnswer;
+    
+    // We update score immediately for the logic
+    let newScore = score;
+    if (isCorrect) {
+      newScore = score + 1;
+      setScore(newScore);
     }
 
-    // Wait 1 second then move to next
     setTimeout(() => {
       if (currentQIndex < questions.length - 1) {
         setCurrentQIndex(currentQIndex + 1);
@@ -69,16 +86,15 @@ export default function QuizScreen() {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#10B981" />
-        <Text style={styles.loadingText}>Gemini AI is generating your quiz...</Text>
+        <Text style={styles.loadingText}>Generating Quiz...</Text>
       </View>
     );
   }
 
-  // ✅ CRASH PREVENTION: If no questions, handle gracefully
   if (!questions || questions.length === 0) {
     return (
       <View style={styles.container}>
-        <Text>No questions available for this lesson.</Text>
+        <Text>No questions available.</Text>
         <TouchableOpacity onPress={() => router.back()} style={{marginTop: 20}}>
             <Text style={{color: '#10B981', fontWeight: 'bold'}}>Go Back</Text>
         </TouchableOpacity>
@@ -100,14 +116,14 @@ export default function QuizScreen() {
         <Text style={styles.resultTitle}>{passed ? "Quiz Passed!" : "Try Again"}</Text>
         <Text style={styles.resultScore}>You scored {Math.round(percentage)}%</Text>
         <Text style={styles.resultSub}>
-          {passed ? "You have unlocked the verification for this lesson." : "You need 80% to pass."}
+          {passed ? "Lesson Verified! Step closer to your certificate." : "You need 80% to verify this lesson."}
         </Text>
 
         <TouchableOpacity 
           style={[styles.button, { backgroundColor: passed ? '#10B981' : '#334155' }]}
           onPress={() => router.back()}
         >
-          <Text style={styles.buttonText}>{passed ? "Continue Learning" : "Back to Lesson"}</Text>
+          <Text style={styles.buttonText}>{passed ? "Continue Learning" : "Retake Quiz"}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -123,14 +139,12 @@ export default function QuizScreen() {
       </View>
 
       <View style={styles.card}>
-        {/* ✅ Safe Access with ? and || to prevent crash */}
-        <Text style={styles.questionText}>{currentQ?.question || "Loading Question..."}</Text>
+        <Text style={styles.questionText}>{currentQ?.question || "Loading..."}</Text>
       </View>
 
       {['A', 'B', 'C', 'D'].map((opt) => {
         const optionKey = `option${opt}`; 
         const isSelected = selectedOption === opt;
-        // ✅ Safe Access here too
         const isCorrect = opt === currentQ?.correctAnswer;
         
         let btnStyle = styles.optionButton;
@@ -148,7 +162,6 @@ export default function QuizScreen() {
             <View style={styles.optionCircle}>
                 <Text style={styles.optionLetter}>{opt}</Text>
             </View>
-            {/* ✅ Safe Access for options */}
             <Text style={styles.optionText}>{currentQ ? currentQ[optionKey] : "..."}</Text>
             
             {isSelected && (
@@ -169,28 +182,22 @@ export default function QuizScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' },
   loadingText: { marginTop: 16, color: '#64748B', fontSize: 16 },
-  
   quizContainer: { flexGrow: 1, padding: 24, backgroundColor: '#F8FAFC' },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, alignItems: 'center' },
   lessonTitle: { fontSize: 12, fontWeight: 'bold', color: '#64748B', textTransform: 'uppercase', flex: 1 },
   counter: { fontSize: 14, fontWeight: 'bold', color: '#0F172A', backgroundColor: '#E2E8F0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-
   card: { backgroundColor: '#fff', padding: 24, borderRadius: 16, marginBottom: 24, elevation: 2, shadowColor: '#000', shadowOpacity: 0.05 },
   questionText: { fontSize: 18, fontWeight: 'bold', color: '#0F172A', lineHeight: 28 },
-
   optionButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
   optionCorrect: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#10B981' },
   optionWrong: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF2F2', padding: 16, borderRadius: 12, marginBottom: 12, borderWidth: 1, borderColor: '#EF4444' },
-
   optionCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginRight: 16 },
   optionLetter: { fontSize: 14, fontWeight: 'bold', color: '#64748B' },
   optionText: { fontSize: 16, color: '#334155', flex: 1 },
-
   resultContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, backgroundColor: '#fff' },
   resultTitle: { fontSize: 28, fontWeight: 'bold', color: '#0F172A', marginTop: 16 },
   resultScore: { fontSize: 20, color: '#64748B', marginTop: 8 },
   resultSub: { fontSize: 14, color: '#94A3B8', marginTop: 8, textAlign: 'center', marginBottom: 32 },
-  
   button: { paddingVertical: 16, paddingHorizontal: 32, borderRadius: 12, width: '100%', alignItems: 'center' },
   buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
 });

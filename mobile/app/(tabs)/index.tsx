@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react'; // ✅ Added useCallback
+import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, Text, TextInput, TouchableOpacity, Alert, ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { useRouter, useFocusEffect } from 'expo-router'; // ✅ Added useFocusEffect
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons'; 
 import api from '../../services/api'; 
 
@@ -13,7 +13,6 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false); 
 
-  // ✅ PRIVACY FIX: Clear fields every time screen comes into focus
   useFocusEffect(
     useCallback(() => {
       setEmail('');
@@ -33,15 +32,37 @@ export default function LoginScreen() {
       const response = await api.post('/auth/login', { email, password });
       const { token, role, userId } = response.data;
 
+      // 🔍 DEBUG: Log what we're saving
+      console.log("🔐 Login - Saving to SecureStore:");
+      console.log("Token length:", token?.length || 0);
+      console.log("Role:", role);
+      console.log("UserId:", userId);
+      console.log("Token type:", typeof token);
+      console.log("UserId type:", typeof userId);
+      
+      // ✅ Save to SecureStore
       await SecureStore.setItemAsync('token', token);
       await SecureStore.setItemAsync('role', role);
-      await SecureStore.setItemAsync('userId', String(userId));
+      await SecureStore.setItemAsync('userId', String(userId)); // Convert to string
 
-      Alert.alert('Success', `Welcome back!`);
+      // 🔍 DEBUG: Verify what was saved
+      const savedToken = await SecureStore.getItemAsync('token');
+      const savedUserId = await SecureStore.getItemAsync('userId');
+      const savedRole = await SecureStore.getItemAsync('role');
+      
+      console.log("🔐 Login - Verification:");
+      console.log("Token saved successfully:", !!savedToken);
+      console.log("Saved UserId:", savedUserId);
+      console.log("Saved Role:", savedRole);
+
+      // ✅ Also set in axios headers immediately
+      api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      
+      Alert.alert('Success', `Welcome back! User ID: ${userId}`);
       
       // Navigate based on role
       if (role === 'ADMIN') {
-        router.replace('/(tabs)/catalog'); // Or admin specific route if you have one
+        router.replace('/(tabs)/catalog');
       } else {
         router.replace('/(tabs)/explore'); 
       }
@@ -62,7 +83,6 @@ export default function LoginScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
-        {/* Logo */}
         <View style={styles.logoContainer}>
           <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
         </View>
@@ -70,20 +90,17 @@ export default function LoginScreen() {
         <Text style={styles.title}>Welcome back</Text>
         <Text style={styles.subtitle}>Log in to continue your verified learning journey.</Text>
 
-        {/* Google Button */}
         <TouchableOpacity style={styles.googleButton} onPress={handleGoogleLogin}>
           <Ionicons name="logo-google" size={20} color="#DB4437" style={{ marginRight: 10 }} />
           <Text style={styles.googleButtonText}>Continue with Google</Text>
         </TouchableOpacity>
 
-        {/* Divider */}
         <View style={styles.dividerContainer}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>or</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Form */}
         <View style={styles.form}>
           <View style={styles.inputWrapper}>
              <TextInput
@@ -127,7 +144,6 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>New to Outcomely? </Text>
           <TouchableOpacity onPress={() => router.push('/signup')}>

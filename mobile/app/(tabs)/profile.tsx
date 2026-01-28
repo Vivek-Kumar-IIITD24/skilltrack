@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 
@@ -34,10 +35,27 @@ export default function ProfileScreen() {
     }
   };
 
+  // ✅ Step 2: Updated Logout Logic
   const handleLogout = async () => {
-    await SecureStore.deleteItemAsync('token');
-    await SecureStore.deleteItemAsync('role');
-    router.replace('/');
+    try {
+      // 1. Clear SecureStore (Sensitive Auth Data)
+      await SecureStore.deleteItemAsync('token');
+      await SecureStore.deleteItemAsync('role');
+
+      // 2. Clear AsyncStorage (App State / Cache)
+      await AsyncStorage.removeItem('token'); 
+      await AsyncStorage.removeItem('user');
+      
+      // 3. Alert and Redirect
+      Alert.alert("Logged Out", "See you soon!");
+      
+      // 🛑 FIX: Changed from '/signup' to '/' (Login Screen)
+      router.replace('/'); 
+      
+    } catch (e) {
+      console.log("Logout error", e);
+      Alert.alert("Error", "Failed to log out properly.");
+    }
   };
 
   const isManager = userInfo.role === 'ADMIN';
@@ -48,7 +66,6 @@ export default function ProfileScreen() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchProfile(); }} tintColor="#10B981" />}
     >
       <View style={styles.header}>
-        {/* ✅ UNIFIED AVATAR: Always Brand Green */}
         <View style={styles.avatarContainer}>
           <Text style={styles.avatarText}>
             {userInfo.name ? userInfo.name.charAt(0).toUpperCase() : '?'}
@@ -58,7 +75,6 @@ export default function ProfileScreen() {
         <Text style={styles.name}>{userInfo.name}</Text>
         <Text style={styles.email}>{userInfo.email}</Text>
         
-        {/* Role Badge: Distinguish via Label/Subtle Color */}
         <View style={[styles.badge, isManager ? styles.adminBadge : styles.studentBadge]}>
           <Text style={[styles.badgeText, isManager ? styles.adminBadgeText : styles.studentBadgeText]}>
             {isManager ? "Manager Account" : "Student"}
@@ -117,7 +133,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
-  // ✅ Fixed Avatar: Uses Brand Green (#10B981)
   avatarContainer: {
     width: 80,
     height: 80,
@@ -153,9 +168,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  // Badge Styles
-  studentBadge: { backgroundColor: '#ECFDF5' }, // Light Green
-  adminBadge: { backgroundColor: '#F1F5F9' },   // Light Grey (Neutral Professional)
+  studentBadge: { backgroundColor: '#ECFDF5' }, 
+  adminBadge: { backgroundColor: '#F1F5F9' },   
   
   badgeText: { fontSize: 12, fontWeight: 'bold', textTransform: 'uppercase' },
   studentBadgeText: { color: '#10B981' },
