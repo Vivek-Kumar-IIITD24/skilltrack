@@ -21,10 +21,11 @@ public class JwtUtil {
 
     private static final long EXPIRATION_TIME = 1000 * 60 * 60 * 24;
 
-    // ✅ GENERATE TOKEN WITH ROLE
-    public String generateToken(String email, String role) {
+    // ✅ GENERATE TOKEN WITH USER ID + ROLE
+    public String generateToken(Long userId, String email, String role) {
         return Jwts.builder()
                 .setSubject(email)
+                .claim("userId", userId)   // 🔥 REQUIRED
                 .claim("role", role)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))

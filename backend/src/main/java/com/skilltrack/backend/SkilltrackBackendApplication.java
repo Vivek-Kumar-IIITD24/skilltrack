@@ -3,7 +3,6 @@ package com.skilltrack.backend;
 import com.skilltrack.backend.entity.Role;
 import com.skilltrack.backend.entity.User;
 import com.skilltrack.backend.repository.UserRepository;
-import com.skilltrack.backend.repository.UserSkillRepository; // ✅ Import this
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -11,6 +10,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.util.Optional;
 
 @SpringBootApplication
 public class SkilltrackBackendApplication {
@@ -32,29 +33,29 @@ public class SkilltrackBackendApplication {
         };
     }
 
-    // ✅ ADDED UserSkillRepository to arguments
+    // ✅ UPDATED: Safer Startup Script (No Deletion)
     @Bean
-    CommandLineRunner run(UserRepository userRepository, UserSkillRepository userSkillRepository, PasswordEncoder passwordEncoder) {
+    CommandLineRunner run(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
-            try {
-                // ✅ SAFE CLEANUP: Delete enrollments BEFORE deleting the user
-                userRepository.findByEmail("manager@test.com").ifPresent(user -> {
-                    System.out.println("Cleaning up old Manager data...");
-                    userSkillRepository.deleteByUserId(user.getId()); // Delete enrollments
-                    userRepository.delete(user);                      // Then delete user
-                });
-                
-                // Create Admin User
-                User admin = new User();
-                admin.setEmail("manager@test.com");
-                admin.setName("Manager User");
-                admin.setRole(Role.ADMIN);
-                admin.setPassword(passwordEncoder.encode("password"));
-                
-                userRepository.save(admin);
-                System.out.println("✅ PASSWORD RESET SUCCESSFUL! Login with: manager@test.com / password");
-            } catch (Exception e) {
-                System.out.println("⚠️ Error: " + e.getMessage());
+            String managerEmail = "manager@test.com";
+            
+            // 1. Check if Manager exists
+            Optional<User> existingManager = userRepository.findByEmail(managerEmail);
+
+            if (existingManager.isPresent()) {
+                System.out.println(">>> ✅ Manager already exists. Skipping cleanup. (Safe Mode)");
+                // 🛑 WE DO NOT DELETE ANYTHING HERE ANYMORE
+                // This prevents the "Ghost User" bug where ID 10 gets deleted and reused.
+            } else {
+                // 2. Only create if missing
+                System.out.println(">>> 🆕 Creating Manager Account...");
+                User manager = new User();
+                manager.setName("Manager");
+                manager.setEmail(managerEmail);
+                manager.setPassword(passwordEncoder.encode("password"));
+                manager.setRole(Role.ADMIN);
+                userRepository.save(manager);
+                System.out.println(">>> ✅ Manager created: " + managerEmail);
             }
         };
     }

@@ -1,9 +1,13 @@
 package com.skilltrack.backend.security;
 
+// ✅ CORRECTED IMPORT
+import com.skilltrack.backend.security.JwtService; 
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -26,33 +30,55 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String authHeader = request.getHeader("Authorization");
-        String token = null;
-        String username = null;
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain
+    ) throws ServletException, IOException {
+        final String authHeader = request.getHeader("Authorization");
+        final String jwt;
+        final String userEmail;
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-            try {
-                // ✅ FIX: Try to extract username, but catch error if token is invalid
-                username = jwtService.extractUsername(token);
-            } catch (Exception e) {
-                System.out.println("⚠️ Warning: Received invalid token. Ignoring it.");
-                // We do NOT throw an error here. We just let 'username' remain null.
-                // This allows the request to proceed to the Login endpoint safely.
-            }
+        // 1. Check if token is present
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-            
-            // Validate token only if we successfully extracted a username
-            if (jwtService.validateToken(token, userDetails.getUsername())) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+        jwt = authHeader.substring(7);
+        
+        try {
+            userEmail = jwtService.extractUsername(jwt); // Extract email from token
+
+            // 2. If user is not already authenticated
+            if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                
+                // ✅ CRASH PROOFING: Try to load user, but catch error if they were deleted from DB
+                try {
+                    UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+
+                    // 3. Validate Token
+                    if (jwtService.isTokenValid(jwt, userDetails)) {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
+                        );
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
+                    }
+                } catch (Exception e) {
+                    // ⚠️ USER NOT FOUND IN DB
+                    // This happens if you wiped the DB but the phone still has an old token.
+                    // We simply ignore this token and let the request proceed as "Anonymous".
+                    System.out.println("⚠️ Warning: Token valid but user not found in DB (Ghost User). Proceeding anonymously.");
+                }
             }
+        } catch (Exception e) {
+            // Token might be expired or malformed
+            System.out.println("⚠️ Warning: Invalid JWT Token. Proceeding anonymously.");
         }
+
         filterChain.doFilter(request, response);
     }
 }

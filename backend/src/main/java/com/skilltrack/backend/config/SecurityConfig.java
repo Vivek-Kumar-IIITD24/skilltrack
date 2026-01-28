@@ -14,6 +14,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.http.HttpMethod;
 
 import java.util.List;
 
@@ -33,17 +34,26 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            // ✅ ADDED: Enable CORS with our configuration below
+            .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**", "/v3/api-docs/**", "/swagger-ui/**").permitAll()
+                // ✅ FIX: Allow "Pre-flight" checks for POST requests
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                
+                // Public Endpoints
+                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/skills/**").permitAll()
+                
+                // Protected Endpoints
+                .requestMatchers("/notes/**").authenticated()
+                .requestMatchers("/quiz/**").authenticated()
+                .requestMatchers("/progress/**").authenticated() // <--- Make sure this is here too!
+                
                 .anyRequest().authenticated()
             )
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-
+        
         return http.build();
     }
 
