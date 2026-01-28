@@ -1,6 +1,5 @@
 package com.skilltrack.backend.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 @Entity
@@ -13,44 +12,46 @@ public class UserSkill {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties("userSkills")
-    private User user; // ❌ Removed @OnDelete (Back to normal)
+    // ✅ CHANGED: Store ID directly (Fixes "setUserId undefined" error)
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "skill_id", nullable = false)
-    @JsonIgnoreProperties("userSkills")
-    private Skill skill; // ❌ Removed @OnDelete (Back to normal)
+    // ✅ CHANGED: Store ID directly (Fixes "setSkillId undefined" error)
+    @Column(name = "skill_id", nullable = false)
+    private Long skillId;
 
     private int progress; // 0 to 100
-    private String status; // ENROLLED, IN_PROGRESS, COMPLETED
+    private String status; // "ENROLLED", "IN_PROGRESS", "COMPLETED"
 
     public UserSkill() {}
 
-    public UserSkill(User user, Skill skill) {
-        this.user = user;
-        this.skill = skill;
+    public UserSkill(Long userId, Long skillId) {
+        this.userId = userId;
+        this.skillId = skillId;
         this.progress = 0;
         this.status = "ENROLLED";
     }
 
-    public UserSkill(User user, Skill skill, int progress, String status) {
-        this.user = user;
-        this.skill = skill;
+    public UserSkill(Long userId, Long skillId, int progress, String status) {
+        this.userId = userId;
+        this.skillId = skillId;
         this.progress = progress;
         this.status = status;
     }
 
-    // Getters and Setters
+    // ✅ Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
-    public Skill getSkill() { return skill; }
-    public void setSkill(Skill skill) { this.skill = skill; }
+
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+
+    public Long getSkillId() { return skillId; }
+    public void setSkillId(Long skillId) { this.skillId = skillId; }
+
     public int getProgress() { return progress; }
     public void setProgress(int progress) { this.progress = progress; }
+
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 }

@@ -55,7 +55,9 @@ public class UserSkillController {
         }
 
         Skill skill = skillRepository.findById(skillId).orElseThrow(() -> new RuntimeException("Skill not found"));
-        UserSkill enrollment = new UserSkill(user, skill);
+        
+        // ✅ FIX: Constructor now takes IDs
+        UserSkill enrollment = new UserSkill(user.getId(), skill.getId());
         userSkillRepository.save(enrollment);
 
         return ResponseEntity.ok(Map.of("message", "Enrolled successfully!"));
@@ -72,23 +74,35 @@ public class UserSkillController {
         List<Map<String, Object>> result = enrollments.stream().map(enrollment -> {
             Map<String, Object> map = new HashMap<>();
             map.put("id", enrollment.getId());
-            map.put("progress", calculateRealProgress(user.getId(), enrollment.getSkill())); 
             map.put("status", enrollment.getStatus());
             
-            Map<String, Object> skillMap = new HashMap<>();
-            skillMap.put("id", enrollment.getSkill().getId());
-            skillMap.put("name", enrollment.getSkill().getName());
-            skillMap.put("level", enrollment.getSkill().getLevel());
-            skillMap.put("lessonCount", enrollment.getSkill().getLessons() != null ? enrollment.getSkill().getLessons().size() : 0);
+            // ✅ FIX: Manually fetch the Skill object using the stored ID
+            Optional<Skill> skillOpt = skillRepository.findById(enrollment.getSkillId());
             
-            map.put("skill", skillMap);
+            if (skillOpt.isPresent()) {
+                Skill skill = skillOpt.get();
+                // Now we can calculate progress because we have the Skill object
+                map.put("progress", calculateRealProgress(user.getId(), skill)); 
+
+                Map<String, Object> skillMap = new HashMap<>();
+                skillMap.put("id", skill.getId());
+                skillMap.put("name", skill.getName());
+                skillMap.put("level", skill.getLevel());
+                skillMap.put("lessonCount", skill.getLessons() != null ? skill.getLessons().size() : 0);
+                
+                map.put("skill", skillMap);
+            } else {
+                map.put("skill", null);
+                map.put("progress", 0);
+            }
+            
             return map;
         }).collect(Collectors.toList());
 
         return ResponseEntity.ok(result);
     }
 
-    // ✅ 3. NEW: UNENROLL / DROP COURSE
+    // 3. UNENROLL
     @DeleteMapping("/{skillId}")
     public ResponseEntity<?> unenrollUser(@PathVariable Long skillId) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -117,7 +131,8 @@ public class UserSkillController {
         }
 
         UserSkill enrollment = enrollmentOpt.get();
-        Skill skill = enrollment.getSkill();
+        // ✅ FIX: Fetch Skill manually
+        Skill skill = skillRepository.findById(enrollment.getSkillId()).orElseThrow(() -> new RuntimeException("Skill not found"));
 
         int totalCourseSeconds = skill.getLessons().stream()
                 .mapToInt(l -> l.getDuration() > 0 ? l.getDuration() : 600)
