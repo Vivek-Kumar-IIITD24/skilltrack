@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Dimensions, TextInput, FlatList } from 'react-native';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'; // ✅ Added useFocusEffect
+import { StyleSheet, View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Dimensions, TextInput, FlatList, Platform } from 'react-native';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router'; 
 import YoutubePlayer, { YoutubeIframeRef } from "react-native-youtube-iframe";
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as SecureStore from 'expo-secure-store';
+
+// ✅ FIXED IMPORT: Use 'legacy' to keep using downloadAsync and cacheDirectory
+import * as FileSystem from 'expo-file-system/legacy'; 
+import * as Sharing from 'expo-sharing'; 
 import api from '../services/api';
 
 const { width } = Dimensions.get('window');
@@ -23,46 +27,49 @@ export default function LessonScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [initialStartTime, setInitialStartTime] = useState<number | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'playlist' | 'notes' | 'quiz'>('playlist');
+  const [activeTab, setActiveTab] = useState<'playlist' | 'notes' | 'quiz' | 'certificate'>('playlist');
   const [newNote, setNewNote] = useState('');
   
+  const [courseProgress, setCourseProgress] = useState(0);
+  const [downloading, setDownloading] = useState(false);
+
   const [watchTime, setWatchTime] = useState(0); 
   const [totalDuration, setTotalDuration] = useState(1); 
 
-  // ✅ FIX 1: Use useFocusEffect to check User ID EVERY time screen appears
-  // This handles logout/login scenarios where the component wasn't unmounted
+  // --- USER ISOLATION LOGIC ---
   useFocusEffect(
     useCallback(() => {
       const checkUser = async () => {
         const storedId = await SecureStore.getItemAsync('userId');
-        
-        // If the logged-in user is different from what this screen thinks...
         if (storedId && storedId !== userId) {
             console.log(`>>> 👤 USER CHANGED from ${userId} to ${storedId}. Resetting.`);
-            setUserId(storedId); // This triggers the useEffect below
+            setUserId(storedId); 
         }
       };
       checkUser();
     }, [userId])
   );
 
-  // ✅ FIX 2: Reload when Skill OR User changes
   useEffect(() => {
     if (userId) { 
         console.log(`>>> 🔄 REFRESHING for User: ${userId} | Skill: ${skillId}`);
-        
-        // 1. Reset Data
         setLessons([]);
         setLoading(true);
-        
-        // 2. NUCLEAR PLAYER RESET
         setPlaying(false);
-        setInitialStartTime(null); // Removes player from UI
+        setInitialStartTime(null); 
         setWatchTime(0);
-        
         fetchSkillDetails();
+        fetchCourseProgress(); 
     }
   }, [skillId, userId]); 
+
+  const fetchCourseProgress = async () => {
+      try {
+          const res = await api.get(`/progress/course/${skillId}`);
+          console.log(">>> 📊 Overall Course Progress:", res.data + "%");
+          setCourseProgress(res.data || 0);
+      } catch (e) {}
+  };
 
   useEffect(() => {
     if (currentLesson) {
@@ -70,7 +77,7 @@ export default function LessonScreen() {
     }
   }, [currentLesson]);
 
-  // Sync Logic
+  // --- SYNC & TIMER LOGIC ---
   const saveProgress = async (lessonId: number) => {
     if(playerRef.current) {
         try {
@@ -84,7 +91,16 @@ export default function LessonScreen() {
     }
   };
 
-  // Watch Timer
+  // Mark Complete when video ends
+  const handleVideoComplete = async () => {
+      if(!currentLesson) return;
+      try {
+          console.log(">>> ✅ Video Finished! Updating Course Progress...");
+          const res = await api.post(`/progress/${currentLesson.id}/complete/${skillId}`);
+          setCourseProgress(res.data); 
+      } catch(e) { console.log("Error marking complete"); }
+  };
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (playing) {
@@ -95,7 +111,6 @@ export default function LessonScreen() {
     return () => clearInterval(interval);
   }, [playing]);
 
-  // Heartbeat Timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (playing && currentLesson) {
@@ -127,8 +142,6 @@ export default function LessonScreen() {
 
   const loadLesson = async (lesson: any) => {
     console.log(`>>> 🎬 LOADING LESSON: ${lesson.title}`);
-    
-    // 1. Reset State
     setPlaying(false);
     setInitialStartTime(null); 
     setWatchTime(0);
@@ -144,7 +157,6 @@ export default function LessonScreen() {
       console.log(">>> 📥 Backend says start at:", savedTime);
       setWatchTime(savedTime); 
 
-      // 2. Wait & Mount Player
       setTimeout(() => {
           setInitialStartTime(savedTime); 
           setLoading(false);
@@ -162,17 +174,19 @@ export default function LessonScreen() {
   const onStateChange = useCallback((state: string) => {
     if (state === "playing") {
       setPlaying(true);
-    } else if (state === "paused" || state === "ended") {
+    } else if (state === "paused") {
       setPlaying(false);
       if(currentLesson) saveProgress(currentLesson.id); 
+    } else if (state === "ended") { 
+      setPlaying(false);
+      handleVideoComplete(); 
     }
   }, [currentLesson]);
 
   const onReady = useCallback(() => {
-      // Optional log
   }, []);
 
-  // --- Notes ---
+  // --- NOTES LOGIC ---
   const fetchNotes = async (lessonId: number) => {
       try {
           const response = await api.get(`/notes/${lessonId}`);
@@ -210,22 +224,82 @@ export default function LessonScreen() {
     } catch (error) { Alert.alert("Error", "Failed to upload note."); } finally { setLoading(false); }
   };
 
+  // ✅ CERTIFICATE DOWNLOAD LOGIC (Updated to work with new FileSystem)
+  const handleDownloadCertificate = async () => {
+      setDownloading(true);
+      try {
+          const token = await SecureStore.getItemAsync('token');
+          
+          // 1. Determine the best directory
+          // Using legacy import guarantees this exists
+          let dir = FileSystem.cacheDirectory;
+          
+          if (!dir) {
+              console.log("⚠️ Cache directory is null, trying Document directory...");
+              dir = FileSystem.documentDirectory;
+          }
+
+          // ⚠️ Absolute Fallback for Android (Expo Go)
+          if (!dir && Platform.OS === 'android') {
+             dir = "file:///data/user/0/host.exp.exponent/cache/";
+          }
+
+          if (!dir) {
+            throw new Error("Could not determine a writable storage path.");
+          }
+
+          // 2. Define file path
+          const cleanTitle = title?.toString().replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '') || 'Course';
+          const fileUri = `${dir}Certificate_${cleanTitle}.pdf`;
+
+          console.log(">>> 📂 Saving to:", fileUri); 
+
+          // 3. Download from Backend
+          const downloadRes = await FileSystem.downloadAsync(
+              `${api.defaults.baseURL}/certificate/download/${skillId}`,
+              fileUri,
+              {
+                  headers: { Authorization: `Bearer ${token}` }
+              }
+          );
+
+          if (downloadRes.status === 200) {
+              // 4. Share/Open PDF
+              if (await Sharing.isAvailableAsync()) {
+                  await Sharing.shareAsync(downloadRes.uri, {
+                      mimeType: 'application/pdf',
+                      dialogTitle: 'Download Certificate',
+                      UTI: 'com.adobe.pdf' 
+                  });
+              } else {
+                  Alert.alert("Saved", "Certificate saved to Cache!");
+              }
+          } else {
+              Alert.alert("Locked", "Complete 100% of the course to unlock this certificate.");
+          }
+      } catch (error: any) {
+          console.error("Download Error:", error);
+          Alert.alert("Download Error", error.message || "Could not save file.");
+      } finally {
+          setDownloading(false);
+      }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const progressPercent = Math.min((watchTime / totalDuration) * 100, 100);
+  const lessonProgress = Math.min((watchTime / totalDuration) * 100, 100);
 
   return (
     <View style={styles.container}>
       <View style={styles.videoWrapper}>
         <View style={styles.videoContainer}>
-          {/* ✅ Player only exists when start time is known and user ID is set */}
           {currentLesson && initialStartTime !== null && userId ? (
             <YoutubePlayer
-              key={`${userId}-${currentLesson.id}-${initialStartTime}`} // Unique key forces rebuild
+              key={`${userId}-${currentLesson.id}-${initialStartTime}`} 
               ref={playerRef}
               height={220}
               width={width}
@@ -247,7 +321,7 @@ export default function LessonScreen() {
           )}
         </View>
         <View style={styles.progressContainer}>
-           <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
+           <View style={[styles.progressBar, { width: `${lessonProgress}%` }]} />
         </View>
       </View>
 
@@ -261,7 +335,7 @@ export default function LessonScreen() {
              </Text>
              <View style={styles.badge}>
                 <Text style={styles.badgeText}>
-                   {progressPercent.toFixed(0)}% WATCHED
+                   {lessonProgress.toFixed(0)}% VIDEO
                 </Text>
              </View>
           </View>
@@ -272,16 +346,27 @@ export default function LessonScreen() {
               <Text style={[styles.tabText, activeTab === 'playlist' && styles.activeTabText]}>Playlist</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'notes' && styles.activeTab]} onPress={() => setActiveTab('notes')}>
-              <Text style={[styles.tabText, activeTab === 'notes' && styles.activeTabText]}>My Notes</Text>
+              <Text style={[styles.tabText, activeTab === 'notes' && styles.activeTabText]}>Notes</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.tab, activeTab === 'quiz' && styles.activeTab]} onPress={() => setActiveTab('quiz')}>
               <Text style={[styles.tabText, activeTab === 'quiz' && styles.activeTabText]}>Quiz</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.tab, activeTab === 'certificate' && styles.activeTab]} onPress={() => setActiveTab('certificate')}>
+              <Text style={[styles.tabText, activeTab === 'certificate' && styles.activeTabText]}>Certificate</Text>
           </TouchableOpacity>
       </View>
 
       <View style={styles.content}>
         {activeTab === 'playlist' && (
             <ScrollView style={{ paddingTop: 16 }}>
+                <View style={{paddingHorizontal: 20, marginBottom: 10}}>
+                    <Text style={{fontSize: 12, color: '#64748B', fontWeight: 'bold', marginBottom: 4}}>TOTAL COURSE PROGRESS</Text>
+                    <View style={{height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden'}}>
+                        <View style={{width: `${courseProgress}%`, height: '100%', backgroundColor: '#10B981'}} />
+                    </View>
+                    <Text style={{textAlign: 'right', fontSize: 12, color: '#10B981', marginTop: 2}}>{courseProgress}% Completed</Text>
+                </View>
+
                 <Text style={styles.sectionHeader}>Course Content</Text>
                 {lessons.map((lesson, index) => (
                     <TouchableOpacity 
@@ -361,22 +446,22 @@ export default function LessonScreen() {
 
         {activeTab === 'quiz' && (
             <View style={styles.quizTabContainer}>
-                <Ionicons name="school-outline" size={64} color={progressPercent >= 90 ? "#10B981" : "#94A3B8"} />
+                <Ionicons name="school-outline" size={64} color={lessonProgress >= 90 ? "#10B981" : "#94A3B8"} />
                 <Text style={styles.quizTitle}>
-                    {progressPercent >= 90 ? "Ready to verify your knowledge?" : "Finish the video first!"}
+                    {lessonProgress >= 90 ? "Ready to verify your knowledge?" : "Finish the video first!"}
                 </Text>
                 <Text style={styles.quizSub}>
-                    {progressPercent >= 90 
+                    {lessonProgress >= 90 
                         ? "Take a quick AI-generated quiz to prove you watched this lesson." 
-                        : `You have watched ${progressPercent.toFixed(0)}%. You need 90% to unlock the quiz.`}
+                        : `You have watched ${lessonProgress.toFixed(0)}% of this video. You need 90% to unlock the quiz.`}
                 </Text>
                 
                 <TouchableOpacity 
                     style={[
                         styles.startQuizBtn, 
-                        { backgroundColor: progressPercent >= 90 ? '#10B981' : '#CBD5E1' } 
+                        { backgroundColor: lessonProgress >= 90 ? '#10B981' : '#CBD5E1' } 
                     ]}
-                    disabled={progressPercent < 90} 
+                    disabled={lessonProgress < 90} 
                     onPress={() => {
                         if (currentLesson) {
                             router.push({ 
@@ -387,11 +472,45 @@ export default function LessonScreen() {
                     }}
                 >
                     <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                        {progressPercent < 90 && <Ionicons name="lock-closed" size={16} color="#64748B" style={{marginRight: 8}} />}
-                        <Text style={[styles.startQuizText, { color: progressPercent >= 90 ? '#fff' : '#64748B' }]}>
-                            {progressPercent >= 90 ? "Start AI Quiz" : "Locked"}
+                        {lessonProgress < 90 && <Ionicons name="lock-closed" size={16} color="#64748B" style={{marginRight: 8}} />}
+                        <Text style={[styles.startQuizText, { color: lessonProgress >= 90 ? '#fff' : '#64748B' }]}>
+                            {lessonProgress >= 90 ? "Start AI Quiz" : "Locked"}
                         </Text>
                     </View>
+                </TouchableOpacity>
+            </View>
+        )}
+
+        {/* ✅ CERTIFICATE TAB */}
+        {activeTab === 'certificate' && (
+            <View style={styles.quizTabContainer}>
+                <Ionicons name="trophy-outline" size={80} color={courseProgress >= 99 ? "#F59E0B" : "#CBD5E1"} />
+                
+                <Text style={styles.quizTitle}>
+                    {courseProgress >= 99 ? "Course Completed!" : "Keep Going!"}
+                </Text>
+                
+                <Text style={styles.quizSub}>
+                    {courseProgress >= 99 
+                        ? "You have mastered this skill. Claim your official certificate now." 
+                        : `You have completed ${courseProgress}% of the entire course. Finish all videos to unlock your certificate.`}
+                </Text>
+                
+                <TouchableOpacity 
+                    style={[styles.startQuizBtn, { backgroundColor: courseProgress >= 99 ? '#10B981' : '#E2E8F0' }]}
+                    disabled={courseProgress < 99 || downloading} 
+                    onPress={handleDownloadCertificate}
+                >
+                    {downloading ? (
+                        <ActivityIndicator color="#fff" />
+                    ) : (
+                        <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                            {courseProgress < 99 && <Ionicons name="lock-closed" size={16} color="#94A3B8" style={{marginRight: 8}} />}
+                            <Text style={[styles.startQuizText, { color: courseProgress >= 99 ? '#fff' : '#94A3B8' }]}>
+                                {courseProgress >= 99 ? "Download Certificate" : "Locked"}
+                            </Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
             </View>
         )}
