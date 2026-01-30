@@ -3,21 +3,26 @@ package com.skilltrack.backend.service;
 import com.skilltrack.backend.entity.Lesson;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Base64;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class YouTubeService {
 
-    // 🔴 KEEP YOUR API KEY HERE
-    private final String API_KEY = "AIzaSyDpokBbSRIoQ4mGbXETKjRLmoj-C_gFKr4"; 
+    // 🔴 Use application.properties for API key
+    @Value("${youtube.api.key}")
+    private String API_KEY;
     
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -58,11 +63,13 @@ public class YouTubeService {
                 for (JsonNode item : items) {
                     String vId = item.path("contentDetails").path("videoId").asText();
                     String title = item.path("snippet").path("title").asText();
+                    String description = item.path("snippet").path("description").asText();
                     
                     if ("Private video".equals(title) || "Deleted video".equals(title)) continue;
 
                     Lesson lesson = new Lesson();
                     lesson.setTitle(title);
+                    lesson.setDescription(description); // Store description for quiz generation
                     lesson.setVideoId(vId);
                     lesson.setLessonOrder(order++);
                     
@@ -90,10 +97,31 @@ public class YouTubeService {
         List<String> videoIds = new ArrayList<>();
         videoIds.add(videoId);
         
-        Lesson lesson = new Lesson();
-        lesson.setVideoId(videoId);
-        lesson.setLessonOrder(1);
-        lessons.add(lesson);
+        // Fetch video details to get title and description
+        try {
+            String url = "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=" + videoId + "&key=" + API_KEY;
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            JsonNode items = objectMapper.readTree(response.getBody()).path("items");
+            
+            if (items.size() > 0) {
+                JsonNode item = items.get(0);
+                String title = item.path("snippet").path("title").asText();
+                String description = item.path("snippet").path("description").asText();
+                
+                Lesson lesson = new Lesson();
+                lesson.setTitle(title);
+                lesson.setDescription(description);
+                lesson.setVideoId(videoId);
+                lesson.setLessonOrder(1);
+                lessons.add(lesson);
+            }
+        } catch (Exception e) {
+            System.out.println(">>> ⚠️ Error fetching single video details: " + e.getMessage());
+            Lesson lesson = new Lesson();
+            lesson.setVideoId(videoId);
+            lesson.setLessonOrder(1);
+            lessons.add(lesson);
+        }
 
         return enrichLessonsWithDetails(lessons, videoIds);
     }
@@ -118,13 +146,20 @@ public class YouTubeService {
                     String id = item.path("id").asText();
                     String durationIso = item.path("contentDetails").path("duration").asText();
                     String fullTitle = item.path("snippet").path("title").asText();
+                    String description = item.path("snippet").path("description").asText();
 
                     // Find matching lesson and update it
                     for (Lesson l : lessons) {
                         if (l.getVideoId().equals(id)) {
                             l.setDuration(parseDuration(durationIso));
                             // Update title if the playlist one was truncated or generic
-                            if (l.getTitle() == null || l.getTitle().isEmpty()) l.setTitle(fullTitle);
+                            if (l.getTitle() == null || l.getTitle().isEmpty()) {
+                                l.setTitle(fullTitle);
+                            }
+                            // Update description
+                            if (l.getDescription() == null || l.getDescription().isEmpty()) {
+                                l.setDescription(description);
+                            }
                         }
                     }
                 }
@@ -133,6 +168,174 @@ public class YouTubeService {
             }
         }
         return lessons;
+    }
+
+    /**
+     * NEW METHOD: Get video transcript using YouTube Data API
+     * Note: This requires the video to have captions and proper permissions
+     */
+    public String getVideoTranscript(String videoId) {
+        try {
+            System.out.println(">>> 📝 Attempting to fetch transcript for video: " + videoId);
+            
+            // Method 1: Try to get captions list (requires OAuth for private captions)
+            // String transcript = getCaptionsViaOfficialAPI(videoId);
+            
+            // Method 2: Use YouTube's internal timedtext API (works for public captions)
+            String transcript = getTimedTextTranscript(videoId);
+            
+            if (transcript != null && !transcript.isEmpty()) {
+                System.out.println(">>> ✅ Successfully fetched transcript. Length: " + transcript.length());
+                return cleanTranscript(transcript);
+            }
+            
+            // Method 3: Fallback - use video description
+            System.out.println(">>> ⚠️ No transcript available, using video description as fallback");
+            return getVideoDescription(videoId);
+            
+        } catch (Exception e) {
+            System.err.println(">>> ❌ Error fetching transcript: " + e.getMessage());
+            return getVideoDescription(videoId); // Fallback to description
+        }
+    }
+    
+    /**
+     * Method 1: Get transcript via YouTube's timedtext API
+     * This works for videos with public captions
+     */
+    private String getTimedTextTranscript(String videoId) {
+        try {
+            // Try different languages - English first
+            String[] languages = {"en", "en-US", "en-GB", ""};
+            
+            for (String lang : languages) {
+                String url = "https://www.youtube.com/api/timedtext?lang=" + lang + "&v=" + videoId + "&fmt=json3";
+                
+                HttpHeaders headers = new HttpHeaders();
+                headers.set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                headers.set("Accept", "application/json");
+                
+                HttpEntity<String> entity = new HttpEntity<>(headers);
+                
+                try {
+                    ResponseEntity<String> response = restTemplate.exchange(
+                        url, HttpMethod.GET, entity, String.class
+                    );
+                    
+                    if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                        return parseTimedTextJson(response.getBody());
+                    }
+                } catch (Exception e) {
+                    // Try next language
+                    continue;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(">>> ⚠️ Timedtext API error: " + e.getMessage());
+        }
+        return null;
+    }
+    
+    /**
+     * Parse YouTube's timedtext JSON response
+     */
+    private String parseTimedTextJson(String json) {
+        try {
+            JsonNode jsonNode = objectMapper.readTree(json);
+            StringBuilder transcript = new StringBuilder();
+            
+            if (jsonNode.has("events")) {
+                for (JsonNode event : jsonNode.path("events")) {
+                    if (event.has("segs")) {
+                        for (JsonNode seg : event.path("segs")) {
+                            if (seg.has("utf8")) {
+                                transcript.append(seg.get("utf8").asText()).append(" ");
+                            }
+                        }
+                    }
+                }
+            }
+            
+            String result = transcript.toString().trim();
+            return result.isEmpty() ? null : result;
+            
+        } catch (Exception e) {
+            System.err.println(">>> ❌ Error parsing timedtext JSON: " + e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Method 2: Get video description (fallback when no transcript)
+     */
+    private String getVideoDescription(String videoId) {
+        try {
+            String url = "https://www.googleapis.com/youtube/v3/videos?part=snippet&id=" + videoId + "&key=" + API_KEY;
+            
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            JsonNode items = objectMapper.readTree(response.getBody()).path("items");
+            
+            if (items.size() > 0) {
+                String description = items.get(0).path("snippet").path("description").asText();
+                if (description != null && !description.isEmpty()) {
+                    // Clean and limit description
+                    return cleanTranscript(description.substring(0, Math.min(description.length(), 1000)));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println(">>> ❌ Error fetching video description: " + e.getMessage());
+        }
+        
+        return "Tutorial video about installation and setup. Covers downloading, installing, configuring, and testing.";
+    }
+    
+    /**
+     * Clean and format transcript/description
+     */
+    private String cleanTranscript(String text) {
+        if (text == null) return null;
+        
+        // Remove excessive whitespace and special markers
+        String cleaned = text
+            .replaceAll("\\s+", " ")
+            .replaceAll("\\[Music\\]", "")
+            .replaceAll("\\[Applause\\]", "")
+            .replaceAll("\\[Laughter\\]", "")
+            .trim();
+        
+        // Limit length for API calls
+        if (cleaned.length() > 3000) {
+            cleaned = cleaned.substring(0, 3000) + "...";
+        }
+        
+        return cleaned;
+    }
+    
+    /**
+     * NEW: Get video details including potential transcript availability
+     */
+    public JsonNode getVideoDetails(String videoId) {
+        try {
+            String url = "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,status&id=" + videoId + "&key=" + API_KEY;
+            
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            JsonNode root = objectMapper.readTree(response.getBody());
+            
+            if (root.path("items").size() > 0) {
+                JsonNode item = root.path("items").get(0);
+                
+                // Check if captions might be available
+                boolean hasCaptions = item.path("contentDetails").path("caption").asText().equals("true");
+                String status = item.path("status").path("uploadStatus").asText();
+                
+                System.out.println(">>> 📊 Video details - Has captions: " + hasCaptions + ", Status: " + status);
+                
+                return item;
+            }
+        } catch (Exception e) {
+            System.err.println(">>> ❌ Error fetching video details: " + e.getMessage());
+        }
+        return null;
     }
 
     private String extractPlaylistId(String url) {

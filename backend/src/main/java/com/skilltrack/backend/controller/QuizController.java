@@ -2,11 +2,12 @@ package com.skilltrack.backend.controller;
 
 import com.skilltrack.backend.entity.Lesson;
 import com.skilltrack.backend.entity.QuizQuestion;
-import com.skilltrack.backend.repository.LessonRepository; // ✅ Now this works
+import com.skilltrack.backend.repository.LessonRepository;
 import com.skilltrack.backend.repository.QuizRepository;
-import com.skilltrack.backend.service.GeminiService;
+import com.skilltrack.backend.service.GeminiService; // ✅ MUST BE GEMINI
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,40 +17,55 @@ import java.util.List;
 @RequestMapping("/quiz")
 public class QuizController {
 
-    private final QuizRepository quizRepository;
-    private final LessonRepository lessonRepository; // ✅ Required to get Title
-    private final GeminiService geminiService;
-
-    public QuizController(QuizRepository quizRepository, LessonRepository lessonRepository, GeminiService geminiService) {
-        this.quizRepository = quizRepository;
-        this.lessonRepository = lessonRepository;
-        this.geminiService = geminiService;
-    }
+    @Autowired private QuizRepository quizRepository;
+    @Autowired private LessonRepository lessonRepository;
+    @Autowired private GeminiService geminiService; // ✅ MUST BE GEMINI
 
     @GetMapping("/{lessonId}")
     public ResponseEntity<?> getQuiz(@PathVariable Long lessonId) {
-        // 1. Check if quiz already exists in DB (Save money/time)
-        List<QuizQuestion> existingQuiz = quizRepository.findByLessonId(lessonId);
-        if (!existingQuiz.isEmpty()) {
-            return ResponseEntity.ok(existingQuiz);
+        System.out.println(">>> 🎯 Requesting Quiz for Lesson ID: " + lessonId);
+
+        // 1. FORCE DELETE (To retry AI)
+        List<QuizQuestion> existing = quizRepository.findByLessonId(lessonId);
+        if (!existing.isEmpty()) {
+            System.out.println(">>> ♻️ Deleting existing quiz to force Gemini Pro...");
+            quizRepository.deleteAll(existing);
         }
 
-        // 2. Fetch Lesson Metadata (Title is needed for AI Prompt)
+        // 2. Fetch Lesson
         Lesson lesson = lessonRepository.findById(lessonId).orElse(null);
-        if (lesson == null) {
-            return ResponseEntity.notFound().build();
-        }
+        if (lesson == null) return ResponseEntity.notFound().build();
 
-        // 3. Generate with Gemini AI
-        System.out.println(">>> 🤖 Generating AI Quiz for: " + lesson.getTitle());
-        String jsonResponse = geminiService.generateQuizContent(lesson.getTitle(), "Programming/Education Context");
+        String desc = (lesson.getDescription() != null) ? lesson.getDescription() : lesson.getTitle();
 
+        // 3. Generate
         try {
-            // 4. Parse JSON and Save to DB
-            JSONArray questionsArray = new JSONArray(jsonResponse);
+            System.out.println(">>> 🤖 Calling Gemini 1.5 Pro Service...");
+            String jsonResponse = geminiService.generateVideoSpecificQuiz(lesson.getTitle(), lesson.getVideoId(), desc);
+            
+            if (saveQuizToDb(lessonId, jsonResponse)) {
+                List<QuizQuestion> newQuiz = quizRepository.findByLessonId(lessonId);
+                System.out.println(">>> ✅ Successfully generated " + newQuiz.size() + " questions");
+                System.out.println(">>> 📤 Sending quiz to Mobile App...");
+                return ResponseEntity.ok(newQuiz);
+            } else {
+                throw new Exception("Database save failed");
+            }
+            
+        } catch (Exception e) {
+            System.err.println(">>> ❌ Error: " + e.getMessage());
+            System.out.println(">>> ⚠️ Loading Fallback Quiz.");
+            String fallback = geminiService.getFallbackQuiz(lesson.getTitle());
+            saveQuizToDb(lessonId, fallback);
+            return ResponseEntity.ok(quizRepository.findByLessonId(lessonId));
+        }
+    }
+
+    private boolean saveQuizToDb(Long lessonId, String jsonString) {
+        try {
+            JSONArray questionsArray = new JSONArray(jsonString);
             for (int i = 0; i < questionsArray.length(); i++) {
                 JSONObject q = questionsArray.getJSONObject(i);
-                
                 QuizQuestion newQ = new QuizQuestion(
                     lessonId,
                     q.getString("question"),
@@ -61,14 +77,10 @@ public class QuizController {
                 );
                 quizRepository.save(newQ);
             }
-            
-            // 5. Return the newly saved quiz
-            return ResponseEntity.ok(quizRepository.findByLessonId(lessonId));
-
+            return true;
         } catch (Exception e) {
-            System.out.println(">>> ❌ AI Generation Failed: " + e.getMessage());
-            // Fallback: If AI fails, return empty list or error
-            return ResponseEntity.status(500).body("Failed to generate quiz");
+            System.err.println(">>> ❌ Save Failed: " + e.getMessage());
+            return false;
         }
     }
 }
