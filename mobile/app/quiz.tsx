@@ -19,7 +19,7 @@ export default function QuizScreen() {
     fetchQuiz();
   }, []);
 
-  // ✅ NEW: Auto-save progress when quiz is passed
+  // ✅ Auto-save progress
   useEffect(() => {
     if (isQuizComplete) {
       const percentage = (score / questions.length) * 100;
@@ -39,34 +39,56 @@ export default function QuizScreen() {
   };
 
   const fetchQuiz = async () => {
-    try {
-      const response = await api.get(`/quiz/${lessonId}`);
-      if (response.data && response.data.length > 0) {
-        setQuestions(response.data);
-      } else {
-        Alert.alert("Notice", "AI could not generate a quiz.");
-        router.back();
+      try {
+          setLoading(true);
+          console.log(`>>> 🚀 [MOBILE] Requesting Quiz for Lesson ${lessonId}...`);
+        
+          const response = await api.get(`/quiz/${lessonId}`);
+          
+          // 🛡️ DATA NORMALIZATION: Fixes "undefined" issue
+          const normalizedQuestions = response.data.map((q: any) => ({
+             id: q.id,
+             question: q.question,
+             // Check all possible casing (A vs optionA vs optiona)
+             optionA: q.optionA || q.optiona || q.A || "Option A",
+             optionB: q.optionB || q.optionb || q.B || "Option B",
+             optionC: q.optionC || q.optionc || q.C || "Option C",
+             optionD: q.optionD || q.optiond || q.D || "Option D",
+             correctAnswer: q.correctAnswer || q.correct_answer || q.answer || "A" 
+          }));
+
+          // 📝 LOGGING
+          console.log("\n===========================================");
+          console.log("       📱 MOBILE RECEIVED QUESTIONS       ");
+          console.log("===========================================");
+        
+          if (normalizedQuestions.length > 0) {
+              normalizedQuestions.forEach((q: any, index: number) => {
+                  console.log(`\n❓ Q${index + 1}: ${q.question}`);
+                  console.log(`   🅰️  ${q.optionA}`);
+                  console.log(`   🅱️  ${q.optionB}`);
+                  console.log(`   ✅ Answer: ${q.correctAnswer}`);
+             });
+          } else {
+              console.log(">>> ⚠️ Received Empty Quiz List");
+          }
+          console.log("\n===========================================\n");
+        
+          setQuestions(normalizedQuestions);
+      } catch (error) {
+          console.error(">>> ❌ [MOBILE] Error fetching quiz:", error);
+          Alert.alert("Error", "Failed to load quiz");
+      } finally {
+          setLoading(false);
       }
-    } catch (error) {
-      Alert.alert("Error", "Could not load quiz.");
-      router.back();
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleAnswer = (option: string) => {
     setSelectedOption(option);
-    
     const currentQ = questions[currentQIndex];
     const isCorrect = option === currentQ.correctAnswer;
     
-    // We update score immediately for the logic
-    let newScore = score;
-    if (isCorrect) {
-      newScore = score + 1;
-      setScore(newScore);
-    }
+    if (isCorrect) setScore(prev => prev + 1);
 
     setTimeout(() => {
       if (currentQIndex < questions.length - 1) {
@@ -116,14 +138,13 @@ export default function QuizScreen() {
         <Text style={styles.resultTitle}>{passed ? "Quiz Passed!" : "Try Again"}</Text>
         <Text style={styles.resultScore}>You scored {Math.round(percentage)}%</Text>
         <Text style={styles.resultSub}>
-          {passed ? "Lesson Verified! Step closer to your certificate." : "You need 80% to verify this lesson."}
+          {passed ? "Lesson Verified!" : "You need 80% to verify this lesson."}
         </Text>
-
         <TouchableOpacity 
           style={[styles.button, { backgroundColor: passed ? '#10B981' : '#334155' }]}
           onPress={() => router.back()}
         >
-          <Text style={styles.buttonText}>{passed ? "Continue Learning" : "Retake Quiz"}</Text>
+          <Text style={styles.buttonText}>{passed ? "Continue" : "Retake Quiz"}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -143,6 +164,7 @@ export default function QuizScreen() {
       </View>
 
       {['A', 'B', 'C', 'D'].map((opt) => {
+        // Maps 'A' to 'optionA' key dynamically
         const optionKey = `option${opt}`; 
         const isSelected = selectedOption === opt;
         const isCorrect = opt === currentQ?.correctAnswer;

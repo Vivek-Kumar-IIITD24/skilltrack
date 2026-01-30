@@ -1,7 +1,9 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const API_URL = 'http://10.164.253.129:8085';
+// ✅ FIXED: Added '/api' to match your Backend's "context-path"
+// Ensure the IP address (10.164.253.129) is correct for your network!
+const API_URL = 'http://10.164.253.129:8085/api';
 
 const api = axios.create({
   baseURL: API_URL,
