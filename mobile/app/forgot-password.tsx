@@ -1,20 +1,45 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../services/api';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSendLink = () => {
+  const handleSendLink = async () => {
     if (!email) {
-      alert('Please enter your email.');
+      Alert.alert('Error', 'Please enter your email.');
       return;
     }
-    // Navigate to Screen 2 (Confirmation)
-    // We pass the email as a parameter so Screen 2 can display it
-    router.push({ pathname: '/reset-link-sent', params: { email } });
+
+    setLoading(true);
+    try {
+      console.log("🚀 Requesting Reset Token for:", email);
+      
+      // Call Backend to generate token (printed in backend console)
+      await api.post('/auth/forgot-password', { email });
+      
+      Alert.alert(
+        "Link Sent", 
+        "A reset token has been generated. Check your Backend Terminal/Console for the code.",
+        [
+            { 
+                text: "Enter Token", 
+                // Navigate to Reset Screen
+                onPress: () => router.push({ pathname: '/reset-password', params: { email } }) 
+            }
+        ]
+      );
+
+    } catch (error: any) {
+      console.error("❌ Forgot Password Error:", error);
+      Alert.alert("Error", "Failed to send request. Ensure backend is running.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -23,6 +48,7 @@ export default function ForgotPasswordScreen() {
         
         {/* Logo */}
         <View style={styles.logoContainer}>
+          {/* Ensure path is correct based on your folder structure */}
           <Image source={require('../assets/images/logo.png')} style={styles.logo} />
         </View>
 
@@ -42,14 +68,22 @@ export default function ForgotPasswordScreen() {
           />
         </View>
 
-        <TouchableOpacity style={styles.sendButton} onPress={handleSendLink}>
-          <Text style={styles.sendButtonText}>Send Reset Link</Text>
+        <TouchableOpacity 
+            style={styles.sendButton} 
+            onPress={handleSendLink}
+            disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.sendButtonText}>Send Reset Link</Text>
+          )}
         </TouchableOpacity>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Remember your password? </Text>
-          <TouchableOpacity onPress={() => router.replace('/(tabs)')}> 
-             {/* Using replace to go back to login cleanly */}
+          <TouchableOpacity onPress={() => router.replace('/')}> 
+             {/* Redirects to Login */}
             <Text style={styles.loginLink}>Log in</Text>
           </TouchableOpacity>
         </View>

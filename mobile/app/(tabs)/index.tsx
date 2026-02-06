@@ -29,36 +29,24 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      // ✅ ENSURE THIS HITS /auth/login
+      console.log("🚀 Attempting login for:", email);
       const response = await api.post('/auth/login', { email, password });
+      
       const { token, role, userId } = response.data;
 
       // 🔍 DEBUG: Log what we're saving
-      console.log("🔐 Login - Saving to SecureStore:");
-      console.log("Token length:", token?.length || 0);
-      console.log("Role:", role);
-      console.log("UserId:", userId);
-      console.log("Token type:", typeof token);
-      console.log("UserId type:", typeof userId);
+      console.log("🔐 Login Success! Saving data...");
       
       // ✅ Save to SecureStore
       await SecureStore.setItemAsync('token', token);
       await SecureStore.setItemAsync('role', role);
-      await SecureStore.setItemAsync('userId', String(userId)); // Convert to string
+      await SecureStore.setItemAsync('userId', String(userId)); 
 
-      // 🔍 DEBUG: Verify what was saved
-      const savedToken = await SecureStore.getItemAsync('token');
-      const savedUserId = await SecureStore.getItemAsync('userId');
-      const savedRole = await SecureStore.getItemAsync('role');
-      
-      console.log("🔐 Login - Verification:");
-      console.log("Token saved successfully:", !!savedToken);
-      console.log("Saved UserId:", savedUserId);
-      console.log("Saved Role:", savedRole);
-
-      // ✅ Also set in axios headers immediately
+      // ✅ Set axios headers globally
       api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       
-      Alert.alert('Success', `Welcome back! User ID: ${userId}`);
+      Alert.alert('Success', `Welcome back!`);
       
       // Navigate based on role
       if (role === 'ADMIN') {
@@ -68,8 +56,26 @@ export default function LoginScreen() {
       }
 
     } catch (error: any) {
-      console.error("Login Error:", error);
-      Alert.alert('Login Failed', 'Invalid email or password.');
+      console.error("❌ Login Error Details:", error);
+      
+      if (error.response) {
+          // The request was made and the server responded with a status code
+          console.log("Status:", error.response.status);
+          console.log("Data:", error.response.data);
+          
+          if (error.response.status === 401) {
+              Alert.alert('Login Failed', 'Incorrect email or password.');
+          } else if (error.response.status === 404) {
+              Alert.alert('Login Failed', 'User not found. Please sign up.');
+          } else {
+              Alert.alert('Login Failed', `Server Error (${error.response.status}): ${JSON.stringify(error.response.data)}`);
+          }
+      } else if (error.request) {
+          // The request was made but no response was received
+          Alert.alert('Network Error', 'Could not connect to the server. Check your internet or IP config.');
+      } else {
+          Alert.alert('Error', 'An unexpected error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -84,6 +90,7 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         
         <View style={styles.logoContainer}>
+          {/* Ensure the image path is correct for your project structure */}
           <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
         </View>
 
