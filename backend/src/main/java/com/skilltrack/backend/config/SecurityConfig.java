@@ -7,7 +7,6 @@ import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -44,11 +43,12 @@ public class SecurityConfig {
                 // Public Endpoints
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/skills/**").permitAll()
+                .requestMatchers("/admin/**").permitAll() // Ensure admin stats are accessible if you added the AdminController earlier
                 
                 // Protected Endpoints
                 .requestMatchers("/notes/**").authenticated()
                 .requestMatchers("/quiz/**").authenticated()
-                .requestMatchers("/progress/**").authenticated() // <--- Make sure this is here too!
+                .requestMatchers("/progress/**").authenticated()
                 
                 .anyRequest().authenticated()
             )
@@ -57,13 +57,13 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ ADDED: This tells the server "Allow requests from ANY IP address"
+    // ✅ UPDATED: Allows both Mobile (*) and Localhost Web (http://localhost:3000)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Allow all origins (Mobile apps often have dynamic IPs in dev)
-        configuration.setAllowedOriginPatterns(List.of("*")); 
+        // This line is the key change for Phase 4:
+        configuration.setAllowedOriginPatterns(List.of("*", "http://localhost:3000")); 
         
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
