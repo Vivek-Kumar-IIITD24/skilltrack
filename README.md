@@ -1,12 +1,20 @@
-# SkillTrack – AI-Powered Student Skill Management Platform
+# SkillTrack – AI-Powered Student Skill Management Platform 
 
-SkillTrack is a comprehensive **Full-Stack Application** (Web, Mobile, & Backend) designed to help students learn, track, and showcase their skills. The platform features an **AI-driven quiz engine**, secure role-based access, and a cross-platform experience for seamless learning.
+> ** Project Status: Active Development (Startup MVP Phase)**
+> *This project is heavily active and currently in the MVP (Minimum Viable Product) stage. We are continuously adding features, optimizing performance, and refining the user experience to build a fully functional startup product.*
+
+SkillTrack is a comprehensive **Full-Stack Ecosystem** (Web, Mobile, & Backend) designed to help students learn, track, and showcase their skills. The platform features an **AI-driven quiz engine**, secure role-based access, and a cross-platform experience for seamless learning.
 
 Deployed Website: [skilltrack-frontend.vercel.app](https://skilltrack-frontend.vercel.app)
 
 ---
 
-##  Key Features
+##  Startup Vision
+We are building SkillTrack to be more than just a learning tool—it is evolving into a **complete ecosystem** for skill verification and career growth. Our long-term goal is to bridge the gap between learning and employability through **verified skill data** and **AI-driven analytics**.
+
+---
+
+##  Current Features (MVP)
 
 ###  **AI-Powered Learning**
 - **Smart Quizzes:** Generates interview-style questions from course content using **Google Gemini Flash 1.5 AI**.
@@ -64,8 +72,7 @@ skilltrack/
     app/            # Screens and Navigation
     components/     # Reusable UI elements
  README.md           # Project Documentation
-\\\
-
+\\\`n
 ---
 
 ##  Getting Started
@@ -75,48 +82,25 @@ skilltrack/
 cd backend
 # Update application.properties with your DB and Gemini API Key
 ./mvnw spring-boot:run
-\\\
-*Server runs at: \http://localhost:8085\*
+\\\`n*Server runs at: \http://localhost:8085\*
 
 ### 2. Website Setup
 \\\ash
 cd website
 npm install
 npm start
-\\\
-*Web App runs at: \http://localhost:3000\*
+\\\`n*Web App runs at: \http://localhost:3000\*
 
 ### 3. Mobile App Setup
 \\\ash
 cd mobile
 npm install
-npx expo start
-\\\
-*Scan the QR code with Expo Go on your phone.*
+npm start
+\\\`n*Scan the QR code with Expo Go on your phone.*
 
 ---
 
-##  Development Roadmap
-
-- [x] **Phase 1: Foundation** - Auth, DB, Basic CRUD.
-- [x] **Phase 2: Core Features** - Video Player, Progress Tracking, Unified Web UI.
-- [x] **Phase 3: Intelligence** - Gemini AI integration for Quizzes.
-- [x] **Phase 4: Mobile** - React Native App launch.
-- [ ] **Phase 5: Analytics** - Detailed Admin Dashboard with Charts.
-
----
-
-##  Author
-
-**Vivek Kumar**
-*Full Stack Developer*
-
- **GitHub:** [Vivek-Kumar-IIITD24](https://github.com/Vivek-Kumar-IIITD24)
-
-
----
-
-## ?? Startup Roadmap (Work In Progress)
+##  Startup Roadmap (Work In Progress)
 
 We are actively working on the following to move from MVP to Product Market Fit:
 
@@ -130,12 +114,12 @@ We are actively working on the following to move from MVP to Product Market Fit:
 
 ---
 
-## ????? Author
+##  Author
 
 **Vivek Kumar**
 *Full Stack Developer & Startup Founder*
 
-?? **GitHub:** [Vivek-Kumar-IIITD24](https://github.com/Vivek-Kumar-IIITD24)
+ **GitHub:** [Vivek-Kumar-IIITD24](https://github.com/Vivek-Kumar-IIITD24)
 
 ---
 
