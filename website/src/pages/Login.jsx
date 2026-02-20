@@ -33,7 +33,13 @@ const Login = () => {
       navigate('/'); 
     } catch (err) {
       console.error(err);
-      setError('Invalid credentials');
+      if (!err.response) {
+        setError('Network Error: creating connection to backend failed.');
+      } else if (err.response.status === 401) {
+        setError('Invalid email or password');
+      } else {
+        setError(err.response.data?.message || 'Login failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
