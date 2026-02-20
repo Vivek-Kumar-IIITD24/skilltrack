@@ -113,17 +113,6 @@ const Player = () => {
   }, [isPlaying]);
 
 
-  // 6. Sync & Save Progress (Every 10s)
-  useEffect(() => {
-    let interval;
-    if (isPlaying && activeLessonId) {
-      interval = setInterval(() => {
-        saveProgress();
-      }, 10000);
-    }
-    return () => clearInterval(interval);
-  }, [isPlaying, activeLessonId, saveProgress]);
-
   const saveProgress = React.useCallback(async () => {
       if(!playerRef.current || typeof playerRef.current.getCurrentTime !== 'function') return;
       
@@ -139,6 +128,17 @@ const Player = () => {
           }
       }
   }, [activeLessonId]);
+
+  // 6. Sync & Save Progress (Every 10s)
+  useEffect(() => {
+    let interval;
+    if (isPlaying && activeLessonId) {
+      interval = setInterval(() => {
+        saveProgress();
+      }, 10000);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, activeLessonId, saveProgress]);
 
   const handleVideoEnd = async () => {
       setIsPlaying(false);

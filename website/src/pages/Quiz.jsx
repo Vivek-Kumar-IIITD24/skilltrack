@@ -46,6 +46,15 @@ const Quiz = () => {
     fetchQuiz();
   }, [lessonId]);
 
+  const verifyLesson = React.useCallback(async () => {
+    try {
+      await api.post(`/progress/${lessonId}/complete`);
+      console.log("Lesson verified!");
+    } catch (error) {
+      console.error("Verification failed", error);
+    }
+  }, [lessonId]);
+
   // 2. Auto-Verify on Complete
   useEffect(() => {
     if (isQuizComplete) {
@@ -55,15 +64,6 @@ const Quiz = () => {
       }
     }
   }, [isQuizComplete, questions.length, score, verifyLesson]);
-
-  const verifyLesson = React.useCallback(async () => {
-    try {
-      await api.post(`/progress/${lessonId}/complete`);
-      console.log("Lesson verified!");
-    } catch (error) {
-      console.error("Verification failed", error);
-    }
-  }, [lessonId]);
 
   const handleAnswer = (option) => {
     setSelectedOption(option);
