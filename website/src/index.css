@@ -1,0 +1,40 @@
+:root {
+  /* Brand Colors extracted from your Mobile App & Logo */
+  --primary: #10b981;       /* The "Outcomely" Green */
+  --primary-hover: #059669; /* Darker Green for hover */
+  --secondary: #3b82f6;     /* The "Enroll" Blue */
+  
+  /* Backgrounds */
+  --bg-page: #f8fafc;       /* Very light gray (page background) */
+  --bg-card: #ffffff;       /* Pure white (cards) */
+  
+  /* Text */
+  --text-main: #0f172a;     /* Dark Navy (Headings) */
+  --text-muted: #64748b;    /* Grey (Subtitles) */
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Common Button Styles */
+button {
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent; 
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1; 
+  border-radius: 4px;
+}
