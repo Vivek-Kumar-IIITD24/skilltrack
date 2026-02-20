@@ -1,187 +1,114 @@
-# SkillTrack – Student Skill Management Platform
+# SkillTrack � AI-Powered Student Skill Management Platform
 
-SkillTrack is a **full-stack web application** designed to help students **track, manage, and showcase their skills**, while enabling admins or institutions to analyze skill data in a structured and secure way.
+SkillTrack is a comprehensive **Full-Stack Application** (Web, Mobile, & Backend) designed to help students learn, track, and showcase their skills. The platform features an **AI-driven quiz engine**, secure role-based access, and a cross-platform experience for seamless learning.
 
-This project is being built **step by step using industry-level practices**, making it ideal for **learning, internships, and real-world backend development exposure**.
+Deployed Website: [skilltrack-frontend.vercel.app](https://skilltrack-frontend.vercel.app)
 
-### Problem Statement
+---
 
-Many students:
-- Learn multiple skills but **lack a structured way to track them**
-- Cannot **showcase verified skills** effectively
-- Do not know their **skill gaps or progress level**
+##  Key Features
 
-**SkillTrack solves this problem** by providing a centralized, secure, and scalable skill-tracking platform.
+###  **AI-Powered Learning**
+- **Smart Quizzes:** Generates interview-style questions from course content using **Google Gemini Flash 1.5 AI**.
+- **Dynamic Assessment:** Questions adapt to the lesson context instantly.
 
-### What SkillTrack Does (Current Features)
+###  **Security & Access**
+- **Role-Based Access Control (RBAC):** Distinct portals for **Students** (Learning) and **Admins** (Content Management).
+- **JWT Authentication:** Secure, stateless login for both Web and Mobile apps.
 
-####  Backend (Spring Boot – In Progress)
--  JWT-based Authentication
--  Role-based Authorization (**STUDENT / ADMIN**)
--  User Profile Management
--  Secure REST APIs
--  PostgreSQL Database Integration
--  Swagger API Documentation
+###  **Interactive Classroom**
+- **Video Learning:** Integrated YouTube player with state tracking.
+- **Anti-Cheat System:** "Effort Tracking" logic ensures students actually watch content before progressing.
+- **Notes & Progress:** Save notes with timestamps; progress syncs across devices.
 
-### Tech Stack
+###  **Cross-Platform Experience**
+- **Unified Web Portal:** Responsive React dashboard for managing courses and profiles.
+- **Mobile App:** React Native (Expo) app for learning on the go.
 
-#### 🔹 Backend
-- **Java 17**
-- **Spring Boot 3**
-- **Spring Security + JWT**
-- **Spring Data JPA**
-- **PostgreSQL**
-- **Maven**
+---
 
-#### 🔹 Frontend (Planned)
-- **React.js**
-- **Tailwind CSS**
-- **Axios**
+##  Tech Stack
 
-#### 🔹 Dev & Tools
-- **Git & GitHub (Feature-branch workflow)**
-- **Swagger**
-- **Postman**
-- **IntelliJ / VS Code**
+### **Backend** (Spring Boot)
+- **Language:** Java 17
+- **Framework:** Spring Boot 3.2
+- **Auth:** Spring Security + JWT
+- **Database:** PostgreSQL
+- **AI Integration:** Google Gemini API (Flash 1.5)
+- **Tools:** Maven, Docker, Swagger UI
 
-###  Project Structure
+### **Frontend** (Website)
+- **Framework:** React.js (v18)
+- **Styling:** Tailwind CSS + Lucide React
+- **Deployment:** Vercel
 
-```text
-skilltrack
-├───.mvn
-│   └───wrapper
-├───src
-│   ├───main
-│   │   ├───java
-│   │   │   └───com
-│   │   │       └───skilltrack
-│   │   │           └───backend
-│   │   │               ├───config
-│   │   │               ├───controller
-│   │   │               ├───dto
-│   │   │               ├───entity
-│   │   │               ├───exception
-│   │   │               ├───repository
-│   │   │               ├───security
-│   │   │               ├───service
-│   │   │               └───util
-│   │   └───resources
-│   │       ├───static
-│   │       └───templates
-│   └───test
-│       └───java
-│           └───com
-│               └───skilltrack
-│                   └───backend
-└───target
-    ├───classes
-    │   └───com
-    │       └───skilltrack
-    │           └───backend
-    │               ├───config
-    │               ├───controller
-    │               ├───dto
-    │               ├───entity
-    │               ├───exception
-    │               ├───repository
-    │               ├───security
-    │               ├───service
-    │               └───util
-    ├───generated-sources
-    │   └───annotations
-    ├───generated-test-sources
-    │   └───test-annotations
-    ├───maven-status
-    │   └───maven-compiler-plugin
-    │       ├───compile
-    │       │   └───default-compile
-    │       └───testCompile
-    │           └───default-testCompile
-    └───test-classes
-        └───com
-            └───skilltrack
-                └───backend
-```
+### **Mobile** (App)
+- **Framework:** React Native
+- **Platform:** Expo (Managed Workflow)
+- **Navigation:** Expo Router
+- **Styling:** NativeWind / StyleSheet
 
-### Authentication Flow
+---
 
-1. User registers or logs in
-2. Backend generates a **JWT token**
-3. Token is required for accessing secured APIs
-4. Role-based access is enforced
+##  Project Structure
 
-### API Documentation
+\\\	ext
+skilltrack/
+ backend/            # Spring Boot REST API
+    src/main/java   # Controllers, Services, Entities
+    Dockerfile      # Containerization config
+ website/            # React Web Application (Student + Admin)
+    src/pages       # Dashboard, Quiz, Login pages
+    public/         # Static assets
+ mobile/             # React Native Mobile App
+    app/            # Screens and Navigation
+    components/     # Reusable UI elements
+ README.md           # Project Documentation
+\\\
 
-Swagger UI is available when the backend is running locally.
+---
 
-**Steps to access Swagger UI:**
-1. Navigate to the backend directory
-2. Run the application
-   ```bash
-   ./mvnw spring-boot:run
-3. Open in browser :
--  http://localhost:8081/swagger-ui/index.html
+##  Getting Started
 
-### Roadmap & Future Features
+### 1. Backend Setup
+\\\ash
+cd backend
+# Update application.properties with your DB and Gemini API Key
+./mvnw spring-boot:run
+\\\
+*Server runs at: \http://localhost:8085\*
 
-####  Phase 1 – Skill Management
--  Add / update / delete skills
--  Skill proficiency levels
--  Student skill dashboard APIs
+### 2. Website Setup
+\\\ash
+cd website
+npm install
+npm start
+\\\
+*Web App runs at: \http://localhost:3000\*
 
-####  Phase 2 – Admin & Analytics
--  Admin dashboard
--  Skill analytics
--  Skill validation workflow
+### 3. Mobile App Setup
+\\\ash
+cd mobile
+npm install
+npx expo start
+\\\
+*Scan the QR code with Expo Go on your phone.*
 
-####  Phase 3 – Frontend & UX
--  React frontend
--  Charts & progress visualization
--  Resume-ready skill export
+---
 
-### Development Approach
+##  Development Roadmap
 
--  Feature-based Git branches
--  Clean architecture  
-  **Controller → Service → Repository**
--  Small, meaningful commits
--  Industry-standard coding practices
+- [x] **Phase 1: Foundation** - Auth, DB, Basic CRUD.
+- [x] **Phase 2: Core Features** - Video Player, Progress Tracking, Unified Web UI.
+- [x] **Phase 3: Intelligence** - Gemini AI integration for Quizzes.
+- [x] **Phase 4: Mobile** - React Native App launch.
+- [ ] **Phase 5: Analytics** - Detailed Admin Dashboard with Charts.
 
-###  Who Is This Project For?
+---
 
--  Students building a strong tech portfolio
--  Recruiters evaluating real backend skills
--  Institutions tracking student skill growth
+##  Author
 
-###  Project Status
+**Vivek Kumar**
+*Full Stack Developer*
 
- **Actively under development**  
- **Started:** January 2026
-
-###  Why Recruiters Should Look at This Repo
-
--  Real backend architecture (not a tutorial clone)
--  Secure authentication & authorization
--  Clean code structure
--  Organized Git history
--  Scalable project design
-
-###  Author
-
-**Vivek Kumar**  
-B.Tech Student  
-Backend Developer (Spring Boot)  
-
-🔗 GitHub:  
-https://github.com/Vivek-Kumar-IIITD24
-
-###  Contributions
-
-This is currently a **personal learning & portfolio project**.  
-Contributions may be opened in future phases.
-
-⭐ If you find this project useful, feel free to star the repository!
-
-
-
-
+ **GitHub:** [Vivek-Kumar-IIITD24](https://github.com/Vivek-Kumar-IIITD24)
