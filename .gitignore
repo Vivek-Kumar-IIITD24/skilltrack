@@ -18,6 +18,15 @@ backend/.mvn/wrapper/maven-wrapper.jar
 application-local.yml
 application-local.properties
 
+# ===== Frontend / Node =====
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ===== Temporary Scripts =====
+backend/*.py
+
+
 # ===== Frontend (future) =====
 frontend/node_modules/
 frontend/dist/
