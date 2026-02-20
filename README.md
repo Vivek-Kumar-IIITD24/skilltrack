@@ -112,3 +112,31 @@ npx expo start
 *Full Stack Developer*
 
  **GitHub:** [Vivek-Kumar-IIITD24](https://github.com/Vivek-Kumar-IIITD24)
+
+
+---
+
+## ?? Startup Roadmap (Work In Progress)
+
+We are actively working on the following to move from MVP to Product Market Fit:
+
+- [x] **Phase 1: Foundation (Completed)** - Secure Auth, Database Design, Basic CRUD.
+- [x] **Phase 2: Core Learning Engine (Completed)** - Video Player, Progress Tracking, Unified Web UI.
+- [x] **Phase 3: Intelligence (Verified)** - Gemini AI integration for dynamic Quizzes.
+- [x] **Phase 4: Mobile Launch (Verified)** - React Native App publicly available via Expo.
+- [ ] **Phase 5: Advanced Analytics (In Progress)** - Admin Dashboard to view student engagement trends.
+- [ ] **Phase 6: Gamification** - Leaderboards, Badges, and Streaks.
+- [ ] **Phase 7: Monetization** - Premium courses and Certification generation.
+
+---
+
+## ????? Author
+
+**Vivek Kumar**
+*Full Stack Developer & Startup Founder*
+
+?? **GitHub:** [Vivek-Kumar-IIITD24](https://github.com/Vivek-Kumar-IIITD24)
+
+---
+
+> **Note:** This repository represents the core technology behind our startup vision. Contributions and feedback are welcome as we scale!
