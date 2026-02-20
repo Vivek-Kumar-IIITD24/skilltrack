@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Shield, LogOut, ChevronRight, Bell, BookOpen } from 'lucide-react';
+import { User, Shield, LogOut, ChevronRight, Bell, BookOpen } from 'lucide-react';
 
 const Profile = () => {
   const navigate = useNavigate();

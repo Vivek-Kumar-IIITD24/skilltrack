@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/axios';
-import { CheckCircle, XCircle, ArrowLeft, Trophy, AlertCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Trophy, AlertCircle, Loader2 } from 'lucide-react';
 
 const Quiz = () => {
   const { lessonId } = useParams();
@@ -54,16 +54,16 @@ const Quiz = () => {
         verifyLesson();
       }
     }
-  }, [isQuizComplete]);
+  }, [isQuizComplete, questions.length, score, verifyLesson]);
 
-  const verifyLesson = async () => {
+  const verifyLesson = React.useCallback(async () => {
     try {
       await api.post(`/progress/${lessonId}/complete`);
       console.log("Lesson verified!");
     } catch (error) {
       console.error("Verification failed", error);
     }
-  };
+  }, [lessonId]);
 
   const handleAnswer = (option) => {
     setSelectedOption(option);

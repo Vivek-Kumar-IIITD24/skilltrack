@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import YouTube from 'react-youtube';
-import { ArrowLeft, PlayCircle, CheckCircle, Lock, Edit3, Award, HelpCircle, FileText } from 'lucide-react';
+import { ArrowLeft, PlayCircle, CheckCircle, Edit3, Award, HelpCircle } from 'lucide-react';
 
 const Player = () => {
   const { id } = useParams();
@@ -122,9 +122,9 @@ const Player = () => {
       }, 10000);
     }
     return () => clearInterval(interval);
-  }, [isPlaying, activeLessonId]);
+  }, [isPlaying, activeLessonId, saveProgress]);
 
-  const saveProgress = async () => {
+  const saveProgress = React.useCallback(async () => {
       if(!playerRef.current || typeof playerRef.current.getCurrentTime !== 'function') return;
       
       const currentTime = await playerRef.current.getCurrentTime();
@@ -138,7 +138,7 @@ const Player = () => {
              console.error("Sync failed", e);
           }
       }
-  };
+  }, [activeLessonId]);
 
   const handleVideoEnd = async () => {
       setIsPlaying(false);
@@ -189,7 +189,7 @@ const Player = () => {
     if (/^[a-zA-Z0-9_-]{11}$/.test(cleanUrl)) return cleanUrl;
 
     // 2. Handle YouTube URLs
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = cleanUrl.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null; 
   };
