@@ -22,8 +22,8 @@ public class GeminiService {
     @Value("${gemini.api.key}")
     private String API_KEY;
     
-    // Updated endpoint for Gemini 1.5 Flash (free tier)
-    private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=";
+    // Updated endpoint - Using 'gemini-flash-latest' to ensure we always hit a valid model
+    private final String API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=";
 
     public String generateVideoSpecificQuiz(String title, String videoId, String description) {
         System.out.println("\n=== 🚀 STARTING QUIZ GENERATION WITH GEMINI ===");
@@ -58,16 +58,17 @@ public class GeminiService {
         
         System.out.println(">>> 📝 Context prepared (Length: " + contextData.length() + ")");
         
-        // GEMINI PROMPT - Simplified for better results
+        // GEMINI PROMPT - Updated for Interview/OA prep
         String prompt = String.format(
-            "You are an expert technical educator. Based on the following video content, create 5 multiple-choice quiz questions.\n\n" +
+            "You are an expert technical interviewer. Based on the following video content, create 10 high-quality multiple-choice questions aimed at preparing students for Job Interviews and Online Assessments (OA).\n\n" +
             "VIDEO CONTENT:\n%s\n\n" +
             "IMPORTANT REQUIREMENTS:\n" +
-            "1. Questions must be specific to this video's content\n" +
-            "2. Make questions practical and useful for learning\n" +
-            "3. Each question must have exactly 4 options (A, B, C, D)\n" +
-            "4. Clearly mark the correct answer\n" +
-            "5. Return ONLY a JSON array\n\n" +
+            "1. Questions must reflect real-world interview scenarios and OA problems based on the transcript.\n" +
+            "2. Test conceptual understanding, edge cases, and application of knowledge.\n" +
+            "3. Generate exactly 10 questions.\n" +
+            "4. Each question must have exactly 4 options (A, B, C, D).\n" +
+            "5. Clearly mark the correct answer.\n" +
+            "6. Return ONLY a JSON array.\n\n" +
             "JSON FORMAT:\n" +
             "[{\"question\": \"What is...\", \"A\": \"Option 1\", \"B\": \"Option 2\", \"C\": \"Option 3\", \"D\": \"Option 4\", \"answer\": \"A\"}]\n\n" +
             "Return ONLY the JSON array. No markdown, no explanations.",
@@ -85,71 +86,70 @@ public class GeminiService {
             System.out.println(">>> 🔐 Checking Gemini API Key...");
             if (API_KEY == null || API_KEY.isEmpty() || API_KEY.contains("your-gemini-api-key")) {
                 System.err.println(">>> ❌ GEMINI API KEY IS NOT SET!");
-                System.err.println(">>> Please set gemini.api.key in application.properties");
                 return getFallbackQuiz(title);
             }
             
-            System.out.println(">>> 📡 API Key found (first 10 chars: " + API_KEY.substring(0, Math.min(10, API_KEY.length())) + "...)");
-
             RestTemplate restTemplate = new RestTemplate(new SimpleClientHttpRequestFactory());
             
-            // Build Gemini request payload
             JSONObject contentPart = new JSONObject().put("text", prompt);
             JSONObject content = new JSONObject().put("parts", new JSONArray().put(contentPart));
             JSONObject requestBody = new JSONObject()
                 .put("contents", new JSONArray().put(content))
-                .put("generationConfig", new JSONObject()
-                    .put("temperature", 0.7)
-                    .put("topK", 1)
-                    .put("topP", 0.95)
-                    .put("maxOutputTokens", 2048));
+                .put("generationConfig", new JSONObject().put("temperature", 0.7).put("maxOutputTokens", 8192));
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            
-            String fullUrl = API_URL + API_KEY;
-            System.out.println(">>> 🌐 Calling Gemini API at: " + fullUrl.substring(0, Math.min(60, fullUrl.length())) + "...");
-            
             HttpEntity<String> entity = new HttpEntity<>(requestBody.toString(), headers);
-            
-            ResponseEntity<String> response = restTemplate.postForEntity(fullUrl, entity, String.class);
+            String fullUrl = API_URL + API_KEY;
 
-            if (response.getStatusCode() == HttpStatus.OK) {
-                System.out.println(">>> ✅ Gemini API Success!");
-                
-                JSONObject jsonResponse = new JSONObject(response.getBody());
-                String text = jsonResponse.getJSONArray("candidates").getJSONObject(0)
-                        .getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
-                
-                System.out.println(">>> 📦 Raw Response Received (Length: " + text.length() + ")");
-                System.out.println(">>> 🔍 First 150 chars: " + text.substring(0, Math.min(150, text.length())));
-                
-                String cleaned = cleanJson(text);
-                System.out.println(">>> ✨ Cleaned JSON (Length: " + cleaned.length() + ")");
-                
-                // Validate JSON
+            int maxRetries = 3;
+            for (int i = 0; i < maxRetries; i++) {
                 try {
-                    JSONArray questionsArray = new JSONArray(cleaned);
-                    if (questionsArray.length() >= 3) {
-                        System.out.println(">>> ✅ Valid JSON with " + questionsArray.length() + " questions");
-                        return cleaned;
-                    } else {
-                        System.err.println(">>> ❌ Invalid JSON or too few questions: " + questionsArray.length());
+                    System.out.println(">>> 🌐 Calling Gemini API (Attempt " + (i+1) + "/" + maxRetries + ")...");
+                    ResponseEntity<String> response = restTemplate.postForEntity(fullUrl, entity, String.class);
+
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        JSONObject jsonResponse = new JSONObject(response.getBody());
+                        String text = jsonResponse.getJSONArray("candidates").getJSONObject(0)
+                                .getJSONObject("content").getJSONArray("parts").getJSONObject(0).getString("text");
+                        
+                        String cleaned = cleanJson(text);
+                        // Validate JSON
+                        try {
+                            if (cleaned.startsWith("{") && cleaned.endsWith("}")) {
+                                cleaned = "[" + cleaned + "]";
+                            }
+                            System.out.println(">>> 📄 Cleaned Output: " + cleaned);
+                            JSONArray questionsArray = new JSONArray(cleaned);
+                            if (questionsArray.length() >= 3) {
+                                return cleaned;
+                            } else {
+                                System.out.println("❌ Too few questions generated: " + questionsArray.length());
+                            }
+                        } catch (Exception e) {
+                            System.err.println(">>> ❌ Failed to parse JSON: " + e.getMessage());
+                            System.err.println(">>> 📄 Raw Content: " + text);
+                        }
+                        System.out.println("❌ Returning Fallback due to parsing/length/empty.");
                         return getFallbackQuiz(title);
                     }
-                } catch (Exception e) {
-                    System.err.println(">>> ❌ Failed to parse JSON: " + e.getMessage());
-                    return getFallbackQuiz(title);
+                } catch (HttpClientErrorException.TooManyRequests e) {
+                    System.out.println(">>> ⏳ Quota Exceeded (429). Waiting 2 seconds before retry...");
+                    try { Thread.sleep(2000); } catch (InterruptedException ie) {}
+                } catch (HttpClientErrorException e) {
+                    if (e.getStatusCode().value() == 429) {
+                        System.out.println(">>> ⏳ Quota Exceeded (429). Waiting 2 seconds before retry...");
+                        try { Thread.sleep(2000); } catch (InterruptedException ie) {}
+                    } else {
+                        System.err.println(">>> ❌ GEMINI HTTP ERROR: " + e.getStatusCode());
+                        System.err.println(">>> 📜 " + e.getResponseBodyAsString());
+                        break;
+                    }
                 }
-            } else {
-                System.err.println(">>> ❌ Gemini API Error Status: " + response.getStatusCode());
-                return getFallbackQuiz(title);
             }
-            
-        } catch (HttpClientErrorException e) {
-            System.err.println(">>> ❌ GEMINI HTTP ERROR: " + e.getStatusCode());
-            System.err.println(">>> 📜 ERROR BODY: " + e.getResponseBodyAsString());
+            System.err.println(">>> ❌ Failed to get valid response after " + maxRetries + " retries.");
             return getFallbackQuiz(title);
+            
         } catch (Exception e) {
             System.err.println(">>> ❌ GENERAL ERROR calling Gemini: " + e.getMessage());
             e.printStackTrace();
@@ -175,7 +175,6 @@ public class GeminiService {
             
             // Fix common JSON formatting issues
             jsonArray = jsonArray
-                .replaceAll("'", "\"")  // Replace single quotes with double quotes
                 .replaceAll(",\\s*}", "}")  // Remove trailing commas
                 .replaceAll(",\\s*\\]", "]");  // Remove trailing commas in arrays
             
