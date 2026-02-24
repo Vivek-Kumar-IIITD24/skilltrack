@@ -43,7 +43,11 @@ public class SecurityConfig {
                 // Public Endpoints
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/skills/**").permitAll()
-                .requestMatchers("/admin/**").permitAll() // Ensure admin stats are accessible if you added the AdminController earlier
+                .requestMatchers("/admin/**").permitAll() // Ensure admin stats are accessible 
+
+                // ✅ Allow USERS endpoint for Admin/Dev (or secure it properly)
+                .requestMatchers("/users/**").permitAll()
+                .requestMatchers("/leaderboard/**").permitAll() 
                 
                 // Protected Endpoints
                 .requestMatchers("/notes/**").authenticated()

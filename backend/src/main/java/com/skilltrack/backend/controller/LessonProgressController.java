@@ -166,7 +166,13 @@ public class LessonProgressController {
         if (percentage > 100) percentage = 100;
 
         userSkill.setProgress(percentage);
-        if (percentage == 100) userSkill.setStatus("COMPLETED");
+        
+        //  Updates timestamp whenever progress changes
+        userSkill.setUpdatedAt(java.time.LocalDateTime.now());
+        
+        if (percentage == 100) {
+             userSkill.setStatus("COMPLETED");
+        }
         
         userSkillRepository.save(userSkill);
         System.out.println(">>> 📊 Course Progress Updated: " + percentage + "% (" + completedCount + "/" + totalLessons + ")");

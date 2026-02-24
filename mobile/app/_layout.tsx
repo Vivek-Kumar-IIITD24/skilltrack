@@ -22,21 +22,21 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Tab 2: Dashboard */}
+      {/* Tab 2: Dashboard (My Courses) */}
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'My Path',
-          tabBarIcon: ({ color }) => <Ionicons size={28} name="rocket" color={color} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="home" color={color} />,
         }}
       />
 
-      {/* Tab 3: Catalog */}
+      {/* Tab 3: Catalog (All Courses) */}
       <Tabs.Screen
         name="catalog"
         options={{
-          title: 'Catalog',
-          tabBarIcon: ({ color }) => <Ionicons size={28} name="search" color={color} />,
+          title: 'Explore',
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="compass" color={color} />,
         }}
       />
     </Tabs>

@@ -15,6 +15,7 @@ import Certificate from './pages/Certificate';
 import AdminDashboard from './pages/AdminDashboard';
 import AddCourse from './pages/AddCourse';
 import Profile from './pages/Profile'; // ✅ Import Profile
+import Leaderboard from './pages/Leaderboard';
 
 // ✅ SMART COMPONENT: Routes to Admin or Student Dashboard based on Role
 const HomeRoute = () => {
@@ -102,7 +103,14 @@ function App() {
                 <Profile />
             </ProtectedRoute>
           } />
+  <Route path="/leaderboard" element={
+            <ProtectedRoute>
+                <Navbar /> 
+                <Leaderboard />
+            </ProtectedRoute>
+          } />
 
+        
         </Routes>
       </div>
     </Router>

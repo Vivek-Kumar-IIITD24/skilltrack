@@ -58,6 +58,7 @@ public class UserSkillController {
         
         // ✅ FIX: Constructor now takes IDs
         UserSkill enrollment = new UserSkill(user.getId(), skill.getId());
+        enrollment.setUpdatedAt(java.time.LocalDateTime.now()); // Explicitly set timestamp
         userSkillRepository.save(enrollment);
 
         return ResponseEntity.ok(Map.of("message", "Enrolled successfully!"));

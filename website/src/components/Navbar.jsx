@@ -42,6 +42,10 @@ const Navbar = () => {
               Explore
             </Link>
 
+            <Link to="/leaderboard" style={{ marginRight: '10px', textDecoration: 'none', color: '#64748b', fontWeight: '600', fontSize: '0.95rem' }}>
+              Leaderboard
+            </Link>
+
             <Link to="/profile" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px', marginRight: '10px', cursor: 'pointer' }}>
                 <div style={{ background: '#ecfdf5', padding: '8px', borderRadius: '50%' }}>
                     <User size={20} color="#10b981" />

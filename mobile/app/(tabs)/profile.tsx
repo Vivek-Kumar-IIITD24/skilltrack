@@ -9,6 +9,7 @@ import api from '../../services/api';
 export default function ProfileScreen() {
   const router = useRouter();
   const [userInfo, setUserInfo] = useState({ name: 'Loading...', email: '', role: '' });
+  const [adminStats, setAdminStats] = useState({ courses: 0, students: 0, completions: 0 });
   const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
@@ -27,6 +28,25 @@ export default function ProfileScreen() {
         email: response.data.email,
         role: storedRole || 'STUDENT'
       });
+
+      // ✅ Fetch Admin Stats if Manager (Dynamic)
+      if (storedRole === 'ADMIN') {
+        try {
+          const statsRes = await api.get('/admin/stats');
+          console.log("Admin Stats Fetched:", statsRes.data);
+          
+          setAdminStats({
+            courses: statsRes.data.totalCourses || 0,
+            students: statsRes.data.totalUsers || 0,
+            completions: statsRes.data.completions || 0
+          });
+        } catch (err) {
+          console.log("Failed to fetch admin stats", err);
+          // Fallback to zeros if fail, don't keep dummy data
+          setAdminStats({ courses: 0, students: 0, completions: 0 });
+        }
+      }
+
     } catch (error) {
       const storedRole = await SecureStore.getItemAsync('role');
       setUserInfo(prev => ({ ...prev, role: storedRole || 'Guest' }));
@@ -82,6 +102,29 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {/* ✅ NEW: Admin Stats Dashboard (Clickable) */}
+      {isManager && (
+        <View style={styles.statsRow}>
+           <TouchableOpacity onPress={() => router.push('/add-course' as any)} style={styles.statCard}>
+              <Ionicons name="school" size={24} color="#3B82F6" />
+              <Text style={styles.statValue}>{adminStats.courses}</Text>
+              <Text style={styles.statLabel}>Add Course</Text>
+           </TouchableOpacity>
+           
+           <TouchableOpacity onPress={() => router.push('/users' as any)} style={styles.statCard}>
+              <Ionicons name="people" size={24} color="#F59E0B" />
+              <Text style={styles.statValue}>{adminStats.students}</Text>
+              <Text style={styles.statLabel}>Manage Users</Text>
+           </TouchableOpacity>
+           
+           <View style={styles.statCard}>
+              <Ionicons name="trophy" size={24} color="#10B981" />
+              <Text style={styles.statValue}>{adminStats.completions}</Text>
+              <Text style={styles.statLabel}>Done</Text>
+           </View>
+        </View>
+      )}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
         <TouchableOpacity style={styles.menuItem}>
@@ -97,6 +140,27 @@ export default function ProfileScreen() {
             <Ionicons name="notifications-outline" size={20} color="#64748B" />
           </View>
           <Text style={styles.menuText}>Notifications</Text>
+          <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+        </TouchableOpacity>
+      </View>
+
+      {/* ✅ NEW: Security Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Security</Text>
+        
+        <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert("Coming Soon", "Change Password feature.")}>
+          <View style={styles.menuIcon}>
+            <Ionicons name="lock-closed-outline" size={20} color="#64748B" />
+          </View>
+          <Text style={styles.menuText}>Change Password</Text>
+          <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem} onPress={() => Alert.alert("Coming Soon", "Please contact support to delete your data.")}>
+          <View style={[styles.menuIcon, {backgroundColor: '#FEF2F2'}]}>
+             <Ionicons name="trash-outline" size={20} color="#EF4444" />
+          </View>
+          <Text style={[styles.menuText, {color: '#EF4444'}]}>Delete Account</Text>
           <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
         </TouchableOpacity>
       </View>
@@ -232,5 +296,35 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 40,
     fontSize: 12,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#fff',
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#0F172A',
+    marginTop: 4,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: '#64748B',
+    textTransform: 'uppercase',
+    marginTop: 2,
   },
 });

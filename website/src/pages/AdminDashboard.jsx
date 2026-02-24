@@ -5,15 +5,43 @@ import { PlusCircle, Users, BookOpen, BarChart3, LogOut } from 'lucide-react';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ students: 0, courses: 0, completions: 0 });
+  const [stats, setStats] = useState({ 
+    activeStudents: 0, 
+    totalCourses: 0, 
+    completions: 0,
+    recentActivity: [] 
+  });
   const userName = localStorage.getItem('studentName') || 'Manager';
+
+  // Helper to format time (e.g., "2 hours ago")
+  const formatTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Just now';
+    
+    // Handle Spring Boot's default array serialization for LocalDateTime [yyyy, MM, dd, HH, mm, ss]
+    let date;
+    if (Array.isArray(timestamp)) {
+       date = new Date(timestamp[0], timestamp[1] - 1, timestamp[2], timestamp[3], timestamp[4], timestamp[5] || 0);
+    } else {
+       date = new Date(timestamp);
+    }
+
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} mins ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+    return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const skillsRes = await api.get('/skills');
-        setStats(prev => ({ ...prev, courses: skillsRes.data.length }));
-      } catch (e) { console.error(e); }
+        const response = await api.get('/admin/stats');
+        setStats(response.data);
+      } catch (e) { 
+        console.error("Failed to fetch admin stats:", e); 
+      }
     };
     fetchStats();
   }, []);
@@ -67,15 +95,44 @@ const AdminDashboard = () => {
 
         {/* Stats Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
-            <StatCard icon={<BookOpen size={24} color="white"/>} color="#3b82f6" label="Total Courses" value={stats.courses} />
-            <StatCard icon={<Users size={24} color="white"/>} color="#f59e0b" label="Active Students" value="120+" />
-            <StatCard icon={<BarChart3 size={24} color="white"/>} color="#10b981" label="Completions" value="85" />
+            <StatCard icon={<BookOpen size={24} color="white"/>} color="#3b82f6" label="Total Courses" value={stats.totalCourses} />
+            <StatCard icon={<Users size={24} color="white"/>} color="#f59e0b" label="Active Students" value={stats.activeStudents} />
+            <StatCard icon={<BarChart3 size={24} color="white"/>} color="#10b981" label="Completions" value={stats.completions} />
         </div>
 
         {/* Recent Activity */}
         <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ marginTop: 0 }}>Recent System Activity</h3>
-            <p style={{ color: '#94a3b8' }}>No recent alerts.</p>
+            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#0f172a' }}>Recent System Activity</h3>
+            
+            {stats.recentActivity && stats.recentActivity.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {stats.recentActivity.map((activity, index) => (
+                        <div key={index} style={{ 
+                            display: 'flex', alignItems: 'center', gap: '1rem', 
+                            padding: '1rem', background: '#f8fafc', borderRadius: '12px'
+                        }}>
+                            <div style={{ 
+                                width: '40px', height: '40px', borderRadius: '50%', 
+                                background: activity.status === 'COMPLETED' ? '#dcfce7' : '#dbeafe', 
+                                color: activity.status === 'COMPLETED' ? '#16a34a' : '#2563eb',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
+                            }}>
+                                {activity.status === 'COMPLETED' ? '✓' : 'Run'}
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.95rem', color: '#334155' }}>
+                                    <span style={{ fontWeight: 'bold', color: '#0f172a' }}>{activity.userName}</span> 
+                                    {' '} has {activity.status === 'COMPLETED' ? 'completed' : 'started'} {' '}
+                                    <span style={{ fontWeight: 'bold', color: '#0f172a' }}>{activity.courseTitle}</span>
+                                </div>
+                                <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{formatTimeAgo(activity.timestamp)}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <p style={{ color: '#94a3b8' }}>No recent activity found.</p>
+            )}
         </div>
 
       </div>

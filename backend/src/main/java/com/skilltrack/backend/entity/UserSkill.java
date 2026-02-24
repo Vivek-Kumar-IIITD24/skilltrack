@@ -23,6 +23,9 @@ public class UserSkill {
     private int progress; // 0 to 100
     private String status; // "ENROLLED", "IN_PROGRESS", "COMPLETED"
 
+    @Column(name = "updated_at")
+    private java.time.LocalDateTime updatedAt;
+
     public UserSkill() {}
 
     public UserSkill(Long userId, Long skillId) {
@@ -30,6 +33,13 @@ public class UserSkill {
         this.skillId = skillId;
         this.progress = 0;
         this.status = "ENROLLED";
+        this.updatedAt = java.time.LocalDateTime.now();
+    }
+
+    @PrePersist
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = java.time.LocalDateTime.now();
     }
 
     public UserSkill(Long userId, Long skillId, int progress, String status) {
@@ -37,6 +47,7 @@ public class UserSkill {
         this.skillId = skillId;
         this.progress = progress;
         this.status = status;
+        this.updatedAt = java.time.LocalDateTime.now();
     }
 
     // ✅ Getters and Setters
@@ -54,4 +65,7 @@ public class UserSkill {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public java.time.LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(java.time.LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

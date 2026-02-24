@@ -140,7 +140,7 @@ export default function CatalogScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Course Catalog</Text>
+        <Text style={styles.headerTitle}>Explore Courses</Text>
         <Text style={styles.headerSubtitle}>Manage and browse courses.</Text>
       </View>
 

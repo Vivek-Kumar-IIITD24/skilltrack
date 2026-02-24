@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api/axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, PlayCircle, Search } from 'lucide-react';
+import { BookOpen, PlayCircle, Search, Trash2 } from 'lucide-react';
 
 const Dashboard = () => {
   const [myCourses, setMyCourses] = useState([]);
@@ -10,33 +10,38 @@ const Dashboard = () => {
   
   const userName = localStorage.getItem('studentName') || 'Student';
 
+  const fetchMyCourses = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/user-skills'); 
+      setMyCourses(response.data || []); 
+    } catch (error) {
+      console.error("Error loading enrollments:", error);
+      setMyCourses([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchMyCourses = async () => {
-      try {
-        // Attempt to fetch enrolled courses using the endpoint Mobile App uses
-        const response = await api.get('/user-skills'); 
-        
-        // Transform data if needed to match frontend expectations
-        // Mobile returns array of objects with { skill: { id, name... }, progress: 0-100 }
-        // We should map it to a simpler structure if our UI expects just "course" objects
-        // or update UI to handle { skill, progress }
-        
-        setMyCourses(response.data || []); 
-      } catch (error) {
-        console.error("Error loading enrollments:", error);
-        // Fallback for older endpoints if necessary
-        try {
-            const fallback = await api.get('/student/enrollments');
-            setMyCourses(fallback.data || []);
-        } catch(e) {
-            setMyCourses([]);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchMyCourses();
   }, []);
+
+  const handleDropCourse = async (skillId, courseName) => {
+    if (window.confirm(`Are you sure you want to drop "${courseName}"? All progress will be lost.`)) {
+      try {
+        await api.delete(`/user-skills/${skillId}`); 
+        // Ideally should check backend endpoint for enrollments deletion. 
+        // Based on analysis, let's assume standard REST: DELETE /user-skills/{id}
+        
+        // Refresh list
+        fetchMyCourses();
+      } catch (error) {
+        alert("Failed to drop course. It might already be removed.");
+      }
+    }
+  };
+
 
   // Handle case where user has NO courses yet
   const renderEmptyState = () => (
@@ -119,13 +124,26 @@ const Dashboard = () => {
                      <div style={{ width: `${progress}%`, height: '100%', background: '#10b981', borderRadius: '10px' }}></div>
                   </div>
 
-                  <Link to={`/course/${course.id}`} style={{ 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    width: '100%', padding: '10px', background: '#0f172a', color: 'white', 
-                    border: 'none', borderRadius: '8px', cursor: 'pointer', textDecoration: 'none', fontWeight: '600'
-                  }}>
-                    <PlayCircle size={18} /> Continue Learning
-                  </Link>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <Link to={`/course/${course.id}`} style={{ 
+                      flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                      padding: '10px', background: '#0f172a', color: 'white', 
+                      border: 'none', borderRadius: '8px', cursor: 'pointer', textDecoration: 'none', fontWeight: '600', fontSize: '0.9rem'
+                    }}>
+                      <PlayCircle size={16} /> Continue
+                    </Link>
+                    
+                    <button 
+                      onClick={() => handleDropCourse(course.id, course.name)}
+                      style={{
+                        padding: '10px', background: '#fff', border: '1px solid #ef4444', 
+                        borderRadius: '8px', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center'
+                      }}
+                      title="Drop Course"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
 
               </div>

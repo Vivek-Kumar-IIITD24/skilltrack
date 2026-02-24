@@ -140,12 +140,27 @@ export default function QuizScreen() {
         <Text style={styles.resultSub}>
           {passed ? "Lesson Verified!" : "You need 80% to verify this lesson."}
         </Text>
-        <TouchableOpacity 
-          style={[styles.button, { backgroundColor: passed ? '#10B981' : '#334155' }]}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.buttonText}>{passed ? "Continue" : "Retake Quiz"}</Text>
-        </TouchableOpacity>
+        
+        <View style={styles.actionButtons}>
+            <TouchableOpacity 
+            style={[styles.button, styles.retakeButton]}
+            onPress={() => {
+                setScore(0);
+                setCurrentQIndex(0);
+                setSelectedOption(null);
+                setIsQuizComplete(false);
+            }}
+            >
+            <Text style={[styles.buttonText, { color: '#334155' }]}>Retake Quiz</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+            style={[styles.button, { backgroundColor: '#0F172A', flex: 1 }]}
+            onPress={() => router.back()}
+            >
+            <Text style={styles.buttonText}>Back to Lesson</Text>
+            </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -220,6 +235,8 @@ const styles = StyleSheet.create({
   resultTitle: { fontSize: 28, fontWeight: 'bold', color: '#0F172A', marginTop: 16 },
   resultScore: { fontSize: 20, color: '#64748B', marginTop: 8 },
   resultSub: { fontSize: 14, color: '#94A3B8', marginTop: 8, textAlign: 'center', marginBottom: 32 },
-  button: { paddingVertical: 16, paddingHorizontal: 32, borderRadius: 12, width: '100%', alignItems: 'center' },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  button: { paddingVertical: 16, paddingHorizontal: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+  actionButtons: { flexDirection: 'row', width: '100%', gap: 12 },
+  retakeButton: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#CBD5E1', flex: 1 },
 });

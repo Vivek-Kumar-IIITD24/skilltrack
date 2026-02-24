@@ -134,7 +134,7 @@ export default function DashboardScreen() {
         )}
       </View>
 
-      <Text style={styles.pageTitle}>My Learning Path</Text>
+      <Text style={styles.pageTitle}>My Dashboard</Text>
 
       {loading ? (
         <ActivityIndicator size="large" color="#10B981" style={{ marginTop: 50 }} />
@@ -146,7 +146,7 @@ export default function DashboardScreen() {
           <Text style={styles.emptyTitle}>Start Your Journey</Text>
           <Text style={styles.emptyText}>You haven't enrolled in any courses yet.</Text>
           <TouchableOpacity style={styles.browseButton} onPress={() => router.push('/(tabs)/catalog')}>
-             <Text style={styles.browseButtonText}>Browse Catalog</Text>
+             <Text style={styles.browseButtonText}>Explore Courses</Text>
           </TouchableOpacity>
         </View>
       ) : (

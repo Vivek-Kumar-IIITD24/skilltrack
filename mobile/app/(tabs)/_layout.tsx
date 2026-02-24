@@ -26,7 +26,8 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'My Path',
+          title: 'Dashboard', 
+          tabBarLabel: 'Dashboard', // Explicitly set label
           tabBarIcon: ({ color }) => <Ionicons size={28} name="rocket" color={color} />,
         }}
       />
@@ -35,12 +36,22 @@ export default function TabLayout() {
       <Tabs.Screen
         name="catalog"
         options={{
-          title: 'Catalog',
+          title: 'Explore', 
+          tabBarLabel: 'Explore', // Explicitly set label
           tabBarIcon: ({ color }) => <Ionicons size={28} name="search" color={color} />,
         }}
       />
 
-      {/* Tab 4: Profile (New) */}
+      {/* Tab 4: Leaderboard */}
+      <Tabs.Screen
+        name="leaderboard"
+        options={{
+          title: 'Leaderboard',
+          tabBarIcon: ({ color }) => <Ionicons size={28} name="trophy" color={color} />,
+        }}
+      />
+
+      {/* Tab 5: Profile (New) */}
       <Tabs.Screen
         name="profile"
         options={{
