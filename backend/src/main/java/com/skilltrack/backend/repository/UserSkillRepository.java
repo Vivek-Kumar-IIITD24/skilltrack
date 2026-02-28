@@ -27,7 +27,7 @@ public interface UserSkillRepository extends JpaRepository<UserSkill, Long> {
 
     // ✅ RECENT ACTIVITY QUERY (Join User + Skill)
     // Fetches top 5 most recent activities (enrollments/updates) based on ID order
-    @Query("SELECT new map(u.name as userName, s.name as courseTitle, us.status as status, us.updatedAt as timestamp) " +
+    @Query("SELECT new map(u.name as userName, s.name as courseTitle, us.status as status, COALESCE(us.updatedAt, CURRENT_TIMESTAMP) as timestamp) " +
            "FROM UserSkill us, User u, Skill s " +
            "WHERE us.userId = u.id AND us.skillId = s.id " +
            "ORDER BY us.updatedAt DESC")

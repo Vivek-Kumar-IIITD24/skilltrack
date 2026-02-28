@@ -156,6 +156,7 @@ public class UserSkillController {
 
         enrollment.setStatus("COMPLETED");
         enrollment.setProgress(100);
+        enrollment.setUpdatedAt(java.time.LocalDateTime.now());
         userSkillRepository.save(enrollment);
 
         Map<String, Object> certData = new HashMap<>();

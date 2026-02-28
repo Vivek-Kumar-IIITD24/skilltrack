@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { PlusCircle, Users, BookOpen, BarChart3, LogOut } from 'lucide-react';
+import { PlusCircle, Users, BookOpen, BarChart3, LogOut, RefreshCw } from 'lucide-react';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ const AdminDashboard = () => {
 
   // Helper to format time (e.g., "2 hours ago")
   const formatTimeAgo = (timestamp) => {
-    if (!timestamp) return 'Just now';
+    if (!timestamp) return 'No timestamp';
     
     // Handle Spring Boot's default array serialization for LocalDateTime [yyyy, MM, dd, HH, mm, ss]
     let date;
@@ -28,21 +28,22 @@ const AdminDashboard = () => {
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
 
+    if (diffInSeconds < 0) return 'Just now (new)';
     if (diffInSeconds < 60) return 'Just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} mins ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
     return `${Math.floor(diffInSeconds / 86400)} days ago`;
   };
+  const fetchStats = async () => {
+    try {
+      const response = await api.get('/admin/stats');
+      setStats(response.data);
+    } catch (e) { 
+      console.error("Failed to fetch admin stats:", e); 
+    }
+  };
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await api.get('/admin/stats');
-        setStats(response.data);
-      } catch (e) { 
-        console.error("Failed to fetch admin stats:", e); 
-      }
-    };
     fetchStats();
   }, []);
 
@@ -55,7 +56,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex' }}>
+    <div style={{ height: '100vh', background: '#f8fafc', display: 'flex', overflow: 'hidden' }}>
       
       {/* Sidebar */}
       <div style={{ width: '250px', background: 'white', borderRight: '1px solid #e2e8f0', padding: '2rem', display: 'flex', flexDirection: 'column' }}>
@@ -76,63 +77,74 @@ const AdminDashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div style={{ flex: 1, padding: '3rem' }}>
+      <div style={{ flex: 1, padding: '3rem', display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexShrink: 0 }}>
             <div>
                 <h1 style={{ margin: 0, color: '#0f172a' }}>Hello, {userName} 👋</h1>
                 <p style={{ color: '#64748b' }}>Here is what's happening in your academy.</p>
             </div>
-            <Link to="/add-course">
-                <button style={{ 
-                    background: '#10b981', color: 'white', border: 'none', padding: '12px 24px', 
-                    borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' 
-                }}>
-                    <PlusCircle size={20} /> Add New Course
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={fetchStats} style={{ 
+                    background: 'white', color: '#64748b', border: '1px solid #e2e8f0', padding: '12px', 
+                    borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }} title="Refresh Data">
+                    <RefreshCw size={20} />
                 </button>
-            </Link>
+                <Link to="/add-course">
+                    <button style={{ 
+                        background: '#10b981', color: 'white', border: 'none', padding: '12px 24px', 
+                        borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' 
+                    }}>
+                        <PlusCircle size={20} /> Add New Course
+                    </button>
+                </Link>
+            </div>
         </div>
 
         {/* Stats Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', marginBottom: '3rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '2rem', marginBottom: '3rem', flexShrink: 0 }}>
             <StatCard icon={<BookOpen size={24} color="white"/>} color="#3b82f6" label="Total Courses" value={stats.totalCourses} />
             <StatCard icon={<Users size={24} color="white"/>} color="#f59e0b" label="Active Students" value={stats.activeStudents} />
             <StatCard icon={<BarChart3 size={24} color="white"/>} color="#10b981" label="Completions" value={stats.completions} />
         </div>
 
         {/* Recent Activity */}
-        <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+        <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
             <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: '#0f172a' }}>Recent System Activity</h3>
             
-            {stats.recentActivity && stats.recentActivity.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {stats.recentActivity.map((activity, index) => (
-                        <div key={index} style={{ 
-                            display: 'flex', alignItems: 'center', gap: '1rem', 
-                            padding: '1rem', background: '#f8fafc', borderRadius: '12px'
-                        }}>
-                            <div style={{ 
-                                width: '40px', height: '40px', borderRadius: '50%', 
-                                background: activity.status === 'COMPLETED' ? '#dcfce7' : '#dbeafe', 
-                                color: activity.status === 'COMPLETED' ? '#16a34a' : '#2563eb',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '10px' }}>
+                {stats.recentActivity && stats.recentActivity.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {stats.recentActivity.map((activity, index) => (
+                            <div key={index} style={{ 
+                                display: 'flex', alignItems: 'center', gap: '1rem', 
+                                padding: '1rem', background: '#f8fafc', borderRadius: '12px'
                             }}>
-                                {activity.status === 'COMPLETED' ? '✓' : 'Run'}
-                            </div>
-                            <div>
-                                <div style={{ fontSize: '0.95rem', color: '#334155' }}>
-                                    <span style={{ fontWeight: 'bold', color: '#0f172a' }}>{activity.userName}</span> 
-                                    {' '} has {activity.status === 'COMPLETED' ? 'completed' : 'started'} {' '}
-                                    <span style={{ fontWeight: 'bold', color: '#0f172a' }}>{activity.courseTitle}</span>
+                                <div style={{ 
+                                    width: '40px', height: '40px', borderRadius: '50%', 
+                                    background: activity.status === 'COMPLETED' ? '#dcfce7' : '#dbeafe', 
+                                    color: activity.status === 'COMPLETED' ? '#16a34a' : '#2563eb',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold',
+                                    flexShrink: 0
+                                }}>
+                                    {activity.status === 'COMPLETED' ? '✓' : 'Run'}
                                 </div>
-                                <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{formatTimeAgo(activity.timestamp)}</div>
+                                <div>
+                                    <div style={{ fontSize: '0.95rem', color: '#334155' }}>
+                                        <span style={{ fontWeight: 'bold', color: '#0f172a' }}>{activity.userName}</span> 
+                                        {' '} has {activity.status === 'COMPLETED' ? 'completed' : 'started'} {' '}
+                                        <span style={{ fontWeight: 'bold', color: '#0f172a' }}>{activity.courseTitle}</span>
+                                    </div>
+                                    <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{formatTimeAgo(activity.timestamp)}</div>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <p style={{ color: '#94a3b8' }}>No recent activity found.</p>
-            )}
+                        ))}
+                    </div>
+                ) : (
+                    <p style={{ color: '#94a3b8' }}>No recent activity found.</p>
+                )}
+            </div>
         </div>
 
       </div>
